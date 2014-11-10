@@ -1,0 +1,390 @@
+#!/usr/bin/env python3
+"""
+A joystick-aware screen waker.
+
+"""
+
+__version__ = '0.1'
+__version_info__ = tuple(int(n) for n in __version__.split('.'))
+
+
+import argparse
+import asyncio
+from collections import namedtuple
+import configparser
+import errno
+import itertools
+import logging
+import os
+import sys
+import time
+
+import pyudev
+
+
+#pylint:disable=bad-continuation
+#pylint:disable=abstract-class-little-used
+
+
+# ======================================================================
+
+
+class Waker(object):
+    """Base class for screen wakers.
+
+    Subclasses are expected to implement the wake() method, and set self.failed
+    if wake() fails, so calling code will know to skip it next time.
+
+    They might launch a subprocess or send a dbus message, although
+    the latter can also be accomplished with the dbus-send command
+    For example:
+
+        dbus-send --type=method_call --dest=org.gnome.ScreenSaver \
+        /org/gnome/ScreenSaver org.gnome.ScreenSaver.SetActive boolean:false
+    """
+    def __init__(self, loop=None):
+        """Initialize the screen waker.
+
+        :param loop:        An asyncio event loop.
+        """
+        self.failed = False  # Subclasses must set this to True if they fail.
+        self._log = logging.getLogger('waker')
+        self._loop = loop or asyncio.get_event_loop()
+
+    def wake(self):
+        """Wake the screen. Set self.failed on failure."""
+        raise NotImplementedError
+
+
+class ExecWaker(Waker):
+    """A subprocess-based screen waker.
+    """
+    def __init__(self, *args, shellcmd=None, name=None, loop=None):
+        """Initialize the screen waker.
+
+        :param args:        A sequence of program agruments for passing to
+                            asyncio.create_subprocess_exec().
+        :param shellcmd:    A command line string for passing to
+                            asyncio.create_subprocess_shell().
+                            This can be used instead of `args`.
+        :param name:        A name for this waker.
+        :param loop:        An asyncio event loop.
+        """
+        super().__init__(loop=loop)
+
+        if args and shellcmd:
+            raise TypeError("Both args and shellcmd were specified.")
+        if not (args or shellcmd):
+            raise TypeError("Neither args nor shellcmd were specified.")
+
+        self._args = args
+        self._shellcmd = shellcmd
+        self._name = name
+        if not self._name:
+            self._name = args[0] if args else shellcmd.split()[0]
+
+    def wake(self):
+        """Wake the screen by running a program.
+        """
+        self._log.debug("%s waker running command: %s", self,
+            ' '.join(self._args) if self._args else self._shellcmd)
+
+        if self._args:
+            launcher_coroutine = asyncio.create_subprocess_exec(
+                *self._args,
+                stdin=asyncio.subprocess.DEVNULL,
+                stdout=asyncio.subprocess.DEVNULL,
+                stderr=asyncio.subprocess.DEVNULL,
+                loop=self._loop)
+        else:
+            launcher_coroutine = asyncio.create_subprocess_shell(
+                self._shellcmd,
+                stdin=asyncio.subprocess.DEVNULL,
+                stdout=asyncio.subprocess.DEVNULL,
+                stderr=asyncio.subprocess.DEVNULL,
+                loop=self._loop)
+
+        exectask = asyncio.Task(launcher_coroutine, loop=self._loop)
+        exectask.add_done_callback(self._on_exec)
+
+    def _on_exec(self, exectask):
+        """Called when the subprocess is launched or fails to launch.
+        """
+        try:
+            process = exectask.result()
+            waittask = asyncio.Task(process.wait())
+            waittask.add_done_callback(self._on_exit)
+
+        except OSError as exception:
+            self.failed = True
+            self._log.debug("%s waker failed: %s", self, exception)
+            return
+
+    def _on_exit(self, waittask):
+        """Called when the subprocess exits.
+        """
+        returncode = waittask.result()
+        if not returncode:
+            self._log.debug("%s waker succeeded", self)
+            return
+
+        self.failed = True
+        self._log.debug("%s waker failed: exit status %s", self, returncode)
+
+    def __str__(self):
+        """Return a string that identifies this waker.
+        """
+        return self._name
+
+
+# ======================================================================
+
+
+class JoystickWatcher(object):
+    """A joystick activity monitor.
+    """
+    def __init__(self, wakers=(), interval=10, useevdev=False, loop=None):
+        """Initialize internal data and stores an event loop for later use.
+
+        :param wakers:      An iterable of Waker instances to call when joystick
+                            activity is detected.
+        :param interval:    Minimum number of seconds between calling wakers.
+        :param useevdev:    True to prefer /dev/input/event* over /dev/input/js*
+                            when a joystick has both.
+                            (The latter is the older and less chatty joystick
+                            device interface; preferring it minimizes I/O.)
+        :param loop:        An asyncio event loop.
+
+        Monitoring will begin when start() is called and the event loop runs.
+        """
+        self._wakers = list(wakers)
+        self._wake_interval = interval
+        self._last_wake = 0  # time when we last woke the screen
+        self._best_devname_prefix = 'event' if useevdev else 'js'
+        self._loop = loop or asyncio.get_event_loop()
+        self._log = logging.getLogger('watcher')
+
+        # The evdev & joydev nodes for the same joystick will share a parent,
+        # so mapping devices by their parent lets us avoid watching both.
+        self._devinfo_by_parent = {}  # device parent -> (name, file descriptor)
+        self._context = pyudev.Context()
+        self._monitor = pyudev.Monitor.from_netlink(self._context)
+        self._monitor.filter_by(subsystem='input')
+
+    def start(self):
+        """Find existing joysticks and add device monitors to the event loop.
+        """
+        if not self._wakers:
+            self._log.warning("no wakers are configured")
+        self._watch_known_joysticks()
+        self._monitor.start()
+        self._loop.add_reader(self._monitor.fileno(), self._poll_udev)
+
+    def _watch_known_joysticks(self):
+        """Start watching known joystick devices for activity.
+        """
+        for device in self._context.list_devices(subsystem='input',
+            ID_INPUT_JOYSTICK=True):
+            self._watch_device(device)
+
+    def _poll_udev(self):
+        """Poll udev for an event, and handle it.
+        This is called when the udev monitor's file descriptor becomes readable.
+        """
+        device = self._monitor.poll()
+        if device.action == 'add':
+            self._watch_device(device)
+        elif device.action == 'remove':
+            self._forget_device(device)
+
+    @staticmethod
+    def _is_joystick(device):
+        """Return True if a udev device represents a joystick.
+        """
+        return bool(device.get('ID_INPUT_JOYSTICK') and device.device_node)
+
+    @staticmethod
+    def _get_device_description(device):
+        """Return a human-readable description of a udev device.
+        """
+        vendor = device.get('ID_VENDOR', "").replace('_', ' ')
+        model = device.get('ID_MODEL', "").replace('_', ' ')
+        return ' '.join((vendor, model))
+
+    def _watch_device(self, device):
+        """Start watching a udev device for activity, if it is a joystick.
+        """
+        if not self._is_joystick(device):
+            return
+
+        # If the device is no more useful than one we already watch, skip it.
+        olddevinfo = self._devinfo_by_parent.get(device.parent)
+        if olddevinfo:
+            if (olddevinfo.name.startswith(self._best_devname_prefix)
+                or not device.sys_name.startswith(self._best_devname_prefix)):
+                return
+
+        # Open the device
+        try:
+            newdevinfo = namedtuple('DevInfo', 'name fd')(name=device.sys_name,
+                fd=os.open(device.device_node, os.O_RDONLY | os.O_NONBLOCK))
+        except PermissionError:
+            self._log.error("permission denied on open %s", device.device_node)
+            return
+
+        # Now that we're sure we can use the device, close any old one.
+        if olddevinfo:
+            self._loop.remove_reader(olddevinfo.fd)
+            os.close(olddevinfo.fd)
+            self._log.info("%s discarded in favor of %s",
+                olddevinfo.name, newdevinfo.name)
+
+        self._loop.add_reader(newdevinfo.fd, self._read_fd, newdevinfo)
+        self._devinfo_by_parent[device.parent] = newdevinfo
+
+        self._log.info("%s is a joystick: %s",
+            device.sys_name, self._get_device_description(device))
+
+    def _forget_device(self, device):
+        """Stop watching a udev device for activity.
+        """
+        devinfo = self._devinfo_by_parent.get(device.parent)
+        if not devinfo:
+            return
+        if devinfo.name != device.sys_name:
+            # We're watching a sibling device file; no need to forget this one.
+            return
+
+        del self._devinfo_by_parent[device.parent]
+        self._loop.remove_reader(devinfo.fd)
+        try:
+            os.close(devinfo.fd)
+        except OSError as exception:
+            if exception.errno != errno.ENODEV:
+                raise
+
+        self._log.info("%s removed from the system", device.sys_name)
+
+    def _read_fd(self, devinfo):
+        """Read and discard data from a device.
+        This is called when a device node's file descriptor becomes readable.
+        """
+        # Read enough for many evdev events (analog sticks can produce a lot).
+        try:
+            os.read(devinfo.fd, 960)
+            self._log.debug("%s activity", devinfo.name)
+            self._wake_screen()
+        except OSError as exception:
+            if exception.errno != errno.ENODEV:
+                raise
+            self._loop.remove_reader(devinfo.fd)
+
+    def _wake_screen(self):
+        """Wake the screen if we haven't done so recently.
+        """
+        now = time.monotonic()
+        if now - self._last_wake < self._wake_interval:
+            return
+        self._last_wake = now
+
+        # Discard any wakers that failed last time.
+        self._wakers = [waker for waker in self._wakers if not waker.failed]
+        if not self._wakers:
+            self._log.warning("cannot wake the screen with no working wakers")
+            return
+
+        self._log.info("waking the screen")
+        for waker in self._wakers:
+            waker.wake()
+
+
+# ======================================================================
+
+
+class Configuration(object):
+    """Configurable program settings.
+    """
+    loglevel = 'warning'
+    interval = 30  # minimum number of seconds between screen wakes
+    command = None
+
+
+DEFAULT_WAKERS = [
+    ExecWaker('xset', 'dpms', 's', 'reset', name="DPMS"),
+    ExecWaker('xscreensaver-command', '-deactivate', name="XScreenSaver"),
+    ExecWaker('gnome-screensaver-command', '--deactivate', name="GNOME"),
+    ExecWaker('mate-screensaver-command', '--poke', name="MATE"),
+    ]
+
+
+PROGRAM_NAME = os.path.basename(sys.argv[0])
+
+
+def parse_command_line(config):
+    """Apply command line options to the global configuration.
+    """
+    parser = argparse.ArgumentParser(
+        description="Wakes the screen when joysticks are active.")
+    parser.add_argument('--loglevel',
+        choices='debug info warning error critical'.split())
+    parser.add_argument('--interval', type=int)
+    parser.add_argument('--command')
+    parser.parse_args(namespace=config)
+
+
+def load_config_file(config):
+    """Apply configuration file options to the global configuration.
+    """
+    path = os.path.expandvars("$HOME/.config/{0}/{0}.conf".format(PROGRAM_NAME))
+    if not os.path.exists(path):
+        return
+
+    parser = configparser.ConfigParser(interpolation=None,
+        inline_comment_prefixes=('#',))
+    with open(path) as stream:
+        # Simulate a config file section header, to please ConfigParser:
+        lines = itertools.chain(("[top]",), stream)
+        parser.read_file(lines)
+
+    for name, value in parser['top'].items():
+        if isinstance(getattr(config, name), int):
+            value = int(value)
+        setattr(config, name, value)
+
+
+def init_logging(config):
+    """Configure logging.
+    """
+    logging.getLogger('asyncio').setLevel(logging.WARNING)
+
+    handler = logging.StreamHandler(sys.stderr)
+    handler.setFormatter(logging.Formatter(
+        PROGRAM_NAME + ": %(levelname)s %(message)s"))
+    logger = logging.getLogger()
+    logger.addHandler(handler)
+    logger.setLevel(getattr(logging, config.loglevel.upper()))
+
+
+def main():
+    """Get things running.
+    """
+    config = Configuration()
+    load_config_file(config)
+    parse_command_line(config)
+    init_logging(config)
+
+    wakers = list(DEFAULT_WAKERS)
+    if config.command:
+        wakers.append(ExecWaker(shellcmd=config.command, name="custom"))
+
+    try:
+        watcher = JoystickWatcher(wakers=wakers, interval=config.interval)
+        watcher.start()
+        asyncio.get_event_loop().run_forever()
+
+    except KeyboardInterrupt:
+        logging.info("exiting at user request")
+
+
+if __name__ == '__main__':
+    main()
