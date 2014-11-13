@@ -6,7 +6,7 @@ A joystick-aware screen waker
 -----------------------------
 
 :Manual section: 1
-:Date:           2014-11-11
+:Date:           2014-11-12
 
 
 Synopsis
@@ -66,15 +66,25 @@ available, and will override their corresponding config file settings.
 Notes
 -----
 
-If all screen-waking commands fail, joystickwake will quit.
+If all the screen-waking commands fail, joystickwake will quit.
 
 If the python3 Xlib package is installed, joystickwake will quit when the
 desktop session ends.  Otherwise, it will quit when its parent process exits.
-This avoids leaving old instances running as users log out and back in.
+This avoids leaving old instances running after the user logs out.
 
-Log output goes to standard error, which is normally captured by the desktop
-environment in a file such as ``$HOME/.xsession-errors``.  At the default
-loglevel setting, very few messages will be produced, if any.
+Log messages go to standard error, which is normally captured by the desktop
+environment in a file such as ``$HOME/.xsession-errors`` or
+``$HOME/.cache/upstart/startxfce4.log``.  At the default loglevel setting, very
+few messages will be produced, if any.
+
+If none of the built-in commands work with a particular desktop environment,
+finding one that does can require some experimentation.  Running joystickwake
+from a terminal window makes this relatively easy.  For example::
+
+    joystickwake --loglevel debug --interval 5 --command "test command"
+
+Once a working command is discovered, it can be saved in the configuration file
+for use in future login sessions.
 
 
 See Also
