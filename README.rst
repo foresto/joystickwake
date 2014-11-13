@@ -28,33 +28,28 @@ blankers when it detects joystick activity.
 
 Once installed, joystickwake launches automatically when a user logs in to
 any modern linux desktop environment.  It can also be run manually, either
-from a command prompt or from a user-defined menu entry.  It then monitors
+from a command prompt or from a user-created menu entry.  It then monitors
 udev to find joystick devices (including those that are plugged in later)
 and reacts to activity from any of them.
-
-Log output goes to standard error, which is normally captured by the desktop
-environment in a file such as ``$HOME/.xsession-errors``.  At the default
-loglevel setting, very few messages will be produced, if any.
-
 
 Configuration
 -------------
 
 In many desktop environments, no configuration is required.  Joystickwake
 comes pre-configured with commands that are known to wake the screen from
-DPMS power-off and several common screen savers::
+DPMS power-off and several common screen savers.  Those commands are::
 
     xset dpms s reset
     xscreensaver-command -deactivate
     gnome-screensaver-command --deactivate
     mate-screensaver-command --poke
 
-If one of these commands fails, it will be skipped when the screen is next due
+If one of those commands fails, it will be skipped when the screen is next due
 to be awakened.
 
-When those commands are not sufficient, a custom command can be defined
-in ``$HOME/.config/joystickwake/joystickwake.conf``.  This example
-illustrates the file format and available settings::
+When the built-in commands are not sufficient, a custom command can be defined
+in ``$HOME/.config/joystickwake/joystickwake.conf``.  This example illustrates
+the file format and available settings::
 
     command = xdg-screensaver reset # This might work on some desktops.
     interval = 30                   # Number of seconds between wakes.
@@ -77,13 +72,17 @@ If the python3 Xlib package is installed, joystickwake will quit when the
 desktop session ends.  Otherwise, it will quit when its parent process exits.
 This avoids leaving old instances running as users log out and back in.
 
+Log output goes to standard error, which is normally captured by the desktop
+environment in a file such as ``$HOME/.xsession-errors``.  At the default
+loglevel setting, very few messages will be produced, if any.
+
 
 See Also
 --------
 
 - Project page:
   https://github.com/foresto/joystickwake
-- Ubuntu packages:
+- Ubuntu package:
   https://launchpad.net/~foresto/+archive/ubuntu/toys
 - xdg-screensaver (from xdg-utils, aka Portland) attempts to be a unified
   screen saver control interface:
