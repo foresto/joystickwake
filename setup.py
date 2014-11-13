@@ -36,7 +36,7 @@ setup(
     long_description=read_readme('README.rst'),
     author='Forest',
     author_email='web11.forest@tibit.com',
-    url='https://github.com/foresto/joystickwake/',
+    url='https://github.com/foresto/joystickwake',
     requires=['pyudev'],
     install_requires=['pyudev'],  # for pip
     scripts=['joystickwake'],

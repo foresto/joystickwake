@@ -82,7 +82,9 @@ See Also
 --------
 
 - Project page:
-  https://github.com/foresto/joystickwake/
+  https://github.com/foresto/joystickwake
+- Ubuntu packages:
+  https://launchpad.net/~foresto/+archive/ubuntu/toys
 - xdg-screensaver (from xdg-utils, aka Portland) attempts to be a unified
   screen saver control interface:
   http://portland.freedesktop.org/
