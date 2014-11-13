@@ -12,15 +12,23 @@ import argparse
 import asyncio
 from collections import namedtuple
 import configparser
+import contextlib
+import ctypes
 import errno
+import io
 import itertools
 import logging
 import os
+import signal
 import sys
 import time
 
 import pyudev
-
+try:
+    import Xlib.display
+    import Xlib.error
+except ImportError:
+    pass
 
 #pylint:disable=bad-continuation
 #pylint:disable=abstract-class-little-used
@@ -175,7 +183,8 @@ class JoystickWatcher(object):
         """Find existing joysticks and add device monitors to the event loop.
         """
         if not self._wakers:
-            self._log.warning("no wakers are configured")
+            self._log.error("exiting because no wakers are configured")
+            sys.exit(1)
         self._watch_known_joysticks()
         self._monitor.start()
         self._loop.add_reader(self._monitor.fileno(), self._poll_udev)
@@ -290,8 +299,8 @@ class JoystickWatcher(object):
         # Discard any wakers that failed last time.
         self._wakers = [waker for waker in self._wakers if not waker.failed]
         if not self._wakers:
-            self._log.warning("cannot wake the screen with no working wakers")
-            return
+            self._log.error("exiting because all wakers have failed")
+            sys.exit(1)
 
         self._log.info("waking the screen")
         for waker in self._wakers:
@@ -365,6 +374,52 @@ def init_logging(config):
     logger.setLevel(getattr(logging, config.loglevel.upper()))
 
 
+def stop_loop_when_xserver_quits(log, loop):
+    """Call loop.stop() when a connection to the X Server is lost.
+    This is how we exit when Xlib is available.
+
+    :param log:     A logging.Logger object.
+    :param loop:    An asyncio event loop.
+
+    On success, return True.
+    If Xlib or the display are unavailable, log a message and return False.
+    """
+    try:
+        with contextlib.redirect_stdout(io.StringIO()):  # silence Xlib
+            display = Xlib.display.Display()
+    except NameError:
+        log.info("cannot contact display server: python3-xlib is not installed")
+        return False
+    except Xlib.error.DisplayError as exception:
+        if 'DISPLAY' not in os.environ:
+            log.info("cannot contact display server: DISPLAY var is not set")
+        else:
+            log.info("%s", exception)
+        return False
+    log.info("connected to the display server")
+
+    def on_display_readable():
+        """Process an Xlib message."""
+        try:
+            if display.pending_events():  # avoid blocking on partial messages
+                display.next_event()
+        except Xlib.error.ConnectionClosedError:
+            log.debug("lost connection to the display server")
+            loop.stop()
+
+    loop.add_reader(display.fileno(), on_display_readable)
+    return True
+
+
+def exit_after_parent():
+    """Request SIGTERM when our parent process exits, causing us to exit.
+    This is how we exit when the user logs out if we can't use Xlib.
+    """
+    libc = ctypes.CDLL('libc.so.6')
+    pr_set_pdeathsig = 1  # value from <sys/prctl.h>
+    libc.prctl(pr_set_pdeathsig, signal.SIGTERM)  # man prctl(2) for details
+
+
 def main():
     """Get things running.
     """
@@ -373,6 +428,13 @@ def main():
     parse_command_line(config)
     init_logging(config)
 
+    log = logging.getLogger()
+    loop = asyncio.get_event_loop()
+
+    if not stop_loop_when_xserver_quits(log, loop):
+        log.info("will exit when our parent process ends")
+        exit_after_parent()
+
     wakers = list(DEFAULT_WAKERS)
     if config.command:
         wakers.append(ExecWaker(shellcmd=config.command, name="custom"))
@@ -380,10 +442,10 @@ def main():
     try:
         watcher = JoystickWatcher(wakers=wakers, interval=config.interval)
         watcher.start()
-        asyncio.get_event_loop().run_forever()
+        loop.run_forever()
 
     except KeyboardInterrupt:
-        logging.info("exiting at user request")
+        log.info("exiting at user request")
 
 
 if __name__ == '__main__':

@@ -68,6 +68,16 @@ Command line options ``--command``, ``--interval``, and ``--loglevel`` are
 available, and will override their corresponding config file settings.
 
 
+Notes
+-----
+
+If all screen-waking commands fail, joystickwake will quit.
+
+If the python3 Xlib package is installed, joystickwake will quit when the
+desktop session ends.  Otherwise, it will quit when its parent process exits.
+This avoids leaving old instances running as users log out and back in.
+
+
 See Also
 --------
 

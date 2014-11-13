@@ -1,2 +1,5 @@
-debian
 MANIFEST
+debian
+.pybuild
+build
+joystickwake.egg-info

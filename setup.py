@@ -38,7 +38,7 @@ setup(
     author_email='web11.forest@tibit.com',
     url='https://github.com/foresto/joystickwake/',
     requires=['pyudev'],
-    install_requires=['pyudev'],  # For pip. A warning from distutils is normal.
+    install_requires=['pyudev'],  # for pip
     scripts=['joystickwake'],
     data_files=[('/etc/xdg/autostart', ['joystickwake.desktop'])],
     platforms=['Linux'],
