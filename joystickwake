@@ -81,9 +81,9 @@ class ExecWaker(Waker):
         super().__init__(loop=loop)
 
         if args and shellcmd:
-            raise TypeError("Both args and shellcmd were specified.")
+            raise ValueError("Both args and shellcmd were specified.")
         if not (args or shellcmd):
-            raise TypeError("Neither args nor shellcmd were specified.")
+            raise ValueError("Neither args nor shellcmd were specified.")
 
         self._args = args
         self._shellcmd = shellcmd
