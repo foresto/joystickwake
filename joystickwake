@@ -97,19 +97,24 @@ class ExecWaker(Waker):
         self._log.debug("%s waker running command: %s", self,
             ' '.join(self._args) if self._args else self._shellcmd)
 
+        if self._log.level <= logging.DEBUG:
+            outstream = None  # allow command output
+        else:
+            outstream = asyncio.subprocess.DEVNULL  # silence command output
+
         if self._args:
             launcher_coroutine = asyncio.create_subprocess_exec(
                 *self._args,
                 stdin=asyncio.subprocess.DEVNULL,
-                stdout=asyncio.subprocess.DEVNULL,
-                stderr=asyncio.subprocess.DEVNULL,
+                stdout=outstream,
+                stderr=outstream,
                 loop=self._loop)
         else:
             launcher_coroutine = asyncio.create_subprocess_shell(
                 self._shellcmd,
                 stdin=asyncio.subprocess.DEVNULL,
-                stdout=asyncio.subprocess.DEVNULL,
-                stderr=asyncio.subprocess.DEVNULL,
+                stdout=outstream,
+                stderr=outstream,
                 loop=self._loop)
 
         exectask = asyncio.Task(launcher_coroutine, loop=self._loop)
@@ -123,9 +128,9 @@ class ExecWaker(Waker):
             waittask = asyncio.Task(process.wait())
             waittask.add_done_callback(self._on_exit)
 
-        except OSError as exception:
+        except OSError as error:
             self.failed = True
-            self._log.debug("%s waker failed: %s", self, exception)
+            self._log.info("%s waker failed: %s", self, error)
             return
 
     def _on_exit(self, waittask):
@@ -137,7 +142,7 @@ class ExecWaker(Waker):
             return
 
         self.failed = True
-        self._log.debug("%s waker failed: exit status %s", self, returncode)
+        self._log.info("%s waker failed: exit status %s", self, returncode)
 
     def __str__(self):
         """Return a string that identifies this waker.
@@ -268,14 +273,14 @@ class JoystickWatcher(object):
         self._loop.remove_reader(devinfo.fd)
         try:
             os.close(devinfo.fd)
-        except OSError as exception:
-            if exception.errno != errno.ENODEV:
+        except OSError as error:
+            if error.errno != errno.ENODEV:
                 raise
 
         self._log.info("%s removed from the system", device.sys_name)
 
     def _read_fd(self, devinfo):
-        """Read and discard data from a device.
+        """Read data from a device.
         This is called when a device node's file descriptor becomes readable.
         """
         # Read enough for many evdev events (analog sticks can produce a lot).
@@ -283,8 +288,8 @@ class JoystickWatcher(object):
             os.read(devinfo.fd, 960)
             self._log.debug("%s activity", devinfo.name)
             self._wake_screen()
-        except OSError as exception:
-            if exception.errno != errno.ENODEV:
+        except OSError as error:
+            if error.errno != errno.ENODEV:
                 raise
             self._loop.remove_reader(devinfo.fd)
 
@@ -315,7 +320,7 @@ class Configuration(object):
     """
     loglevel = 'warning'
     interval = 30  # minimum number of seconds between screen wakes
-    command = None
+    command = None # custom screen waker shell command, as a string
 
 
 DEFAULT_WAKERS = [
@@ -366,12 +371,17 @@ def init_logging(config):
     """
     logging.getLogger('asyncio').setLevel(logging.WARNING)
 
-    handler = logging.StreamHandler(sys.stderr)
-    handler.setFormatter(logging.Formatter(
-        PROGRAM_NAME + ": %(levelname)s %(message)s"))
     logger = logging.getLogger()
+    level = getattr(logging, config.loglevel.upper())
+    logger.setLevel(level)
+
+    handler = logging.StreamHandler(sys.stderr)
+    if level <= logging.DEBUG:
+        template = ": %(asctime)s %(levelname)s %(message)s"
+    else:
+        template = ": %(levelname)s %(message)s"
+    handler.setFormatter(logging.Formatter(PROGRAM_NAME + template))
     logger.addHandler(handler)
-    logger.setLevel(getattr(logging, config.loglevel.upper()))
 
 
 def stop_loop_when_xserver_quits(log, loop):
@@ -390,15 +400,15 @@ def stop_loop_when_xserver_quits(log, loop):
     except NameError:
         log.info("cannot contact display server: python3-xlib is not installed")
         return False
-    except Xlib.error.DisplayError as exception:
+    except Xlib.error.DisplayError as error:
         if 'DISPLAY' not in os.environ:
             log.info("cannot contact display server: DISPLAY var is not set")
         else:
-            log.info("%s", exception)
+            log.info("%s", error)
         return False
     log.info("connected to the display server")
 
-    def on_display_readable():
+    def read_display_event():
         """Process an Xlib message."""
         try:
             if display.pending_events():  # avoid blocking on partial messages
@@ -407,12 +417,12 @@ def stop_loop_when_xserver_quits(log, loop):
             log.debug("lost connection to the display server")
             loop.stop()
 
-    loop.add_reader(display.fileno(), on_display_readable)
+    loop.add_reader(display.fileno(), read_display_event)
     return True
 
 
 def exit_after_parent():
-    """Request SIGTERM when our parent process exits, causing us to exit.
+    """Request SIGTERM when our parent process exits.
     This is how we exit when the user logs out if we can't use Xlib.
     """
     libc = ctypes.CDLL('libc.so.6')
