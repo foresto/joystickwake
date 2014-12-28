@@ -4,7 +4,7 @@ A joystick-aware screen waker.
 
 """
 
-__version__ = '0.1'
+__version__ = '0.2'
 __version_info__ = tuple(int(n) for n in __version__.split('.'))
 
 
@@ -91,6 +91,10 @@ class ExecWaker(Waker):
         if not self._name:
             self._name = args[0] if args else shellcmd.split()[0]
 
+        # A command that starts but exits with an error might mean that the
+        # screensaver simply isn't running yet, so we retry a few times.
+        self._softfailcount = 0
+
     def wake(self):
         """Wake the screen by running a program.
         """
@@ -138,11 +142,19 @@ class ExecWaker(Waker):
         """
         returncode = waittask.result()
         if not returncode:
+            self._softfailcount = 0
             self._log.debug("%s waker succeeded", self)
             return
 
+        self._softfailcount += 1
+        if self._softfailcount < 3:
+            self._log.info("%s waker failed: exit status %s (try %s)",
+                self, returncode, self._softfailcount)
+            return
+
         self.failed = True
-        self._log.info("%s waker failed: exit status %s", self, returncode)
+        self._log.info("%s waker failed: exit status %s (try %s; giving up)",
+            self, returncode, self._softfailcount)
 
     def __str__(self):
         """Return a string that identifies this waker.
