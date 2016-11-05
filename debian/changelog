@@ -1,0 +1,20 @@
+joystickwake (0.2.1~yakkety1) yakkety; urgency=medium
+
+  * Packaging: Move debian directory into the main source repository.
+  * Packaging: Update version, author email address, development status.
+
+ -- Forest <forestcode@ixio.org>  Sat, 05 Nov 2016 00:01:42 -0700
+
+joystickwake (0.2-1) trusty; urgency=medium
+
+  * Allow for screensaver startup time: Don't mark a waker as failed
+    just because its command reports an error on the first run.
+  * Log more information, including waker command output at debug log level.
+
+ -- Forest <web11.forest@tibit.com>  Sun, 28 Dec 2014 13:46:51 -0800
+
+joystickwake (0.1-1) trusty; urgency=low
+
+  * Initial packaging.
+
+ -- Forest <web11.forest@tibit.com>  Wed, 12 Nov 2014 16:03:03 -0800
