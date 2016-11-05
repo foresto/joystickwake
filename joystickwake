@@ -23,6 +23,7 @@ import io
 import itertools
 import logging
 import os
+import os.path
 import signal
 import sys
 import time
@@ -363,7 +364,8 @@ def parse_command_line(config):
 def load_config_file(config):
     """Apply configuration file options to the global configuration.
     """
-    path = os.path.expandvars("$HOME/.config/{0}/{0}.conf".format(PROGRAM_NAME))
+    indir = os.environ.get('XDG_CONFIG_HOME') or os.path.expanduser("~/.config")
+    path = os.path.join(indir, PROGRAM_NAME, PROGRAM_NAME + ".conf")
     if not os.path.exists(path):
         return
 

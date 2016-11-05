@@ -6,7 +6,7 @@ A joystick-aware screen waker
 -----------------------------
 
 :Manual section: 1
-:Date:           2014-11-12
+:Date:           2016-11-04
 
 
 Synopsis
@@ -48,8 +48,12 @@ If one of those commands fails, it will be skipped when the screen is next due
 to be awakened.
 
 When the built-in commands are not sufficient, a custom command can be defined
-in ``$HOME/.config/joystickwake/joystickwake.conf``.  This example illustrates
-the file format and available settings::
+in either of the following configuration files::
+
+    $XDG_CONFIG_HOME/joystickwake/joystickwake.conf
+    $HOME/.config/joystickwake/joystickwake.conf
+
+This example illustrates the file format and available settings::
 
     command = xdg-screensaver reset # This might work on some desktops.
     interval = 30                   # Number of seconds between wakes.

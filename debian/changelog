@@ -1,9 +1,10 @@
-joystickwake (0.2.1~yakkety1) yakkety; urgency=medium
+joystickwake (0.2.1) xenial; urgency=medium
 
+  * Look for config file under $XDG_CONFIG_HOME; fall back to ~/.config.
   * Packaging: Move debian directory into the main source repository.
   * Packaging: Update version, author email address, development status.
 
- -- Forest <forestcode@ixio.org>  Sat, 05 Nov 2016 00:01:42 -0700
+ -- Forest <forestcode@ixio.org>  Sat, 05 Nov 2016 00:38:26 -0700
 
 joystickwake (0.2-1) trusty; urgency=medium
 
