@@ -8,6 +8,10 @@ __version__ = '0.2.1'
 __version_info__ = tuple(int(n) for n in __version__.split('.'))
 
 
+#pylint:disable=bad-continuation
+#pylint:disable=wrong-import-position
+
+
 import argparse
 import asyncio
 from collections import namedtuple
@@ -29,9 +33,6 @@ try:
     import Xlib.error
 except ImportError:
     pass
-
-#pylint:disable=bad-continuation
-#pylint:disable=abstract-class-little-used
 
 
 # ======================================================================
@@ -107,6 +108,7 @@ class ExecWaker(Waker):
             outstream = asyncio.subprocess.DEVNULL  # silence command output
 
         if self._args:
+            #pylint:disable=no-value-for-parameter
             launcher_coroutine = asyncio.create_subprocess_exec(
                 *self._args,
                 stdin=asyncio.subprocess.DEVNULL,
