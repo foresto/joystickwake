@@ -179,8 +179,9 @@ class JoystickWatcher(object):
         :param interval:    Minimum number of seconds between calling wakers.
         :param useevdev:    True to prefer /dev/input/event* over /dev/input/js*
                             when a joystick has both.
-                            (The latter is the older and less chatty joystick
-                            device interface; preferring it minimizes I/O.)
+                            (The latter is the older joystick device interface.
+                            It allows calibration and is less chatty than evdev,
+                            making it the better one for games and minimal I/O.)
         :param loop:        An asyncio event loop.
 
         Monitoring will begin when start() is called and the event loop runs.
