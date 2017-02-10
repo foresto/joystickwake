@@ -1,3 +1,10 @@
+joystickwake (0.2.2) yakkety; urgency=medium
+
+  * Update the built-in xset dpms command.
+  * debian/control: Bump Standards-Version.
+
+ -- Forest <forestcode@ixio.org>  Thu, 09 Feb 2017 16:30:35 -0800
+
 joystickwake (0.2.1) xenial; urgency=medium
 
   * Look for config file under $XDG_CONFIG_HOME; fall back to ~/.config.

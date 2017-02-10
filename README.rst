@@ -6,7 +6,7 @@ A joystick-aware screen waker
 -----------------------------
 
 :Manual section: 1
-:Date:           2016-11-04
+:Date:           2017-02-09
 
 
 Synopsis
@@ -39,7 +39,7 @@ In many desktop environments, no configuration is required.  Joystickwake
 comes pre-configured with commands that are known to wake the screen from
 DPMS power-off and several common screen savers.  Those commands are::
 
-    xset dpms s reset
+    xset dpms force on s reset
     xscreensaver-command -deactivate
     gnome-screensaver-command --deactivate
     mate-screensaver-command --poke

@@ -4,7 +4,7 @@ A joystick-aware screen waker.
 
 """
 
-__version__ = '0.2.1'
+__version__ = '0.2.2'
 __version_info__ = tuple(int(n) for n in __version__.split('.'))
 
 
@@ -340,7 +340,7 @@ class Configuration(object):
 
 
 DEFAULT_WAKERS = [
-    ExecWaker('xset', 'dpms', 's', 'reset', name="DPMS"),
+    ExecWaker('xset', 'dpms', 'force', 'on', 's', 'reset', name="X settings"),
     ExecWaker('xscreensaver-command', '-deactivate', name="XScreenSaver"),
     ExecWaker('gnome-screensaver-command', '--deactivate', name="GNOME"),
     ExecWaker('mate-screensaver-command', '--poke', name="MATE"),
