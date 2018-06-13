@@ -137,7 +137,7 @@ class ExecWaker(Waker):
 
         except OSError as error:
             self.failed = True
-            self._log.info("%s waker failed: %s", self, error)
+            self._log.info("%s waker is unavailable: %s", self, error)
             return
 
     def _on_exit(self, waittask):
