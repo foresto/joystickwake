@@ -100,7 +100,7 @@ See Also
   https://launchpad.net/~foresto/+archive/ubuntu/toys
 - xdg-screensaver (from xdg-utils, aka Portland) attempts to be a unified
   screen saver control interface:
-  http://portland.freedesktop.org/
+  https://www.freedesktop.org/wiki/Software/xdg-utils/
 - Caffeine inhibits the screen saver when it finds a fullscreen window:
   https://code.launchpad.net/caffeine
 - Faux GNOME Screensaver is a GNOME compatibility layer for XScreenSaver:
