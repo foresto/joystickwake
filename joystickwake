@@ -394,10 +394,11 @@ def init_logging(config):
 
     handler = logging.StreamHandler(sys.stderr)
     if level <= logging.DEBUG:
-        template = ": %(asctime)s %(levelname)s %(message)s"
+        msgformat = PROGRAM_NAME + " [{asctime}] {levelname} {message}"
     else:
-        template = ": %(levelname)s %(message)s"
-    handler.setFormatter(logging.Formatter(PROGRAM_NAME + template))
+        msgformat = PROGRAM_NAME + " [{asctime}] {message}"
+    formatter = logging.Formatter(msgformat, datefmt="%H:%M:%S", style='{')
+    handler.setFormatter(formatter)
     logger.addHandler(handler)
 
 
