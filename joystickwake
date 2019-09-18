@@ -266,7 +266,7 @@ class JoystickWatcher:
         if olddevinfo:
             self._loop.remove_reader(olddevinfo.fd)
             os.close(olddevinfo.fd)
-            self._log.info("%s discarded in favor of %s",
+            self._log.info("%s discarded in favor of its twin: %s",
                 olddevinfo.name, newdevinfo.name)
 
         self._loop.add_reader(newdevinfo.fd, self._read_fd, newdevinfo)
