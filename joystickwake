@@ -39,7 +39,7 @@ except ImportError:
 # ======================================================================
 
 
-class Waker(object):
+class Waker:
     """Base class for screen wakers.
 
     Subclasses are expected to implement the wake() method, and set self.failed
@@ -168,7 +168,7 @@ class ExecWaker(Waker):
 # ======================================================================
 
 
-class JoystickWatcher(object):
+class JoystickWatcher:
     """A joystick activity monitor.
     """
     def __init__(self, wakers=(), interval=10, useevdev=False, loop=None):
@@ -331,7 +331,7 @@ class JoystickWatcher(object):
 # ======================================================================
 
 
-class Configuration(object):
+class Configuration:
     """Configurable program settings.
     """
     loglevel = 'warning'
