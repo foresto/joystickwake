@@ -440,12 +440,12 @@ def stop_loop_when_xserver_quits(log, loop):
 
 
 def exit_after_parent():
-    """Request SIGTERM when our parent process exits.
+    """Request SIGHUP when our parent process exits.
     This is how we exit when the user logs out if we can't use Xlib.
     """
     libc = ctypes.CDLL('libc.so.6')
     pr_set_pdeathsig = 1  # value from <sys/prctl.h>
-    libc.prctl(pr_set_pdeathsig, signal.SIGTERM)  # man prctl(2) for details
+    libc.prctl(pr_set_pdeathsig, signal.SIGHUP)  # man prctl(2) for details
 
 
 def main():
