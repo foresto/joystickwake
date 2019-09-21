@@ -1,3 +1,14 @@
+joystickwake (0.2.3) disco; urgency=medium
+
+  * Revise log message format.
+  * Improve log text for an unavailable waker.
+  * Improve log text for a discarded duplicate device.
+  * Use SIGHUP instead of SIGTERM to signal parent process exit.
+  * Don't explicitly inherit from object, since it's implied in python 3.
+  * docs: Update xdg-screensaver URL.
+
+ -- Forest <forestcode@ixio.org>  Sat, 21 Sep 2019 16:47:53 -0700
+
 joystickwake (0.2.2) yakkety; urgency=medium
 
   * Update the built-in xset dpms command.
