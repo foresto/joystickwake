@@ -43,6 +43,7 @@ DPMS power-off and several common screen savers.  Those commands are::
     xscreensaver-command -deactivate
     gnome-screensaver-command --deactivate
     mate-screensaver-command --poke
+    xfce4-screensaver-command --poke
 
 If one of those commands fails, it will be skipped when the screen is next due
 to be awakened.

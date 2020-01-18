@@ -1,3 +1,9 @@
+joystickwake (0.2.4) disco; urgency=medium
+
+  * Support xfce4-screensaver by default.
+
+ -- Forest <forestcode@ixio.org>  Sat, 18 Jan 2020 13:31:42 -0800
+
 joystickwake (0.2.3) disco; urgency=medium
 
   * Revise log message format.
