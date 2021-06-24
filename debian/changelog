@@ -1,8 +1,16 @@
-joystickwake (0.2.4) disco; urgency=medium
+joystickwake (0.2.4a) focal; urgency=medium
+
+  * No functional changes.
+  * Update readme and internal __version__ number, which was
+    neglected in the last package version update.
+
+ -- Forest <forestix@sonic.net>  Wed, 23 Jun 2021 17:32:15 -0700
+
+joystickwake (0.2.4) focal; urgency=medium
 
   * Support xfce4-screensaver by default.
 
- -- Forest <forestcode@ixio.org>  Sat, 18 Jan 2020 13:31:42 -0800
+ -- Forest <forestix@sonic.net>  Fri, 27 Nov 2020 15:04:09 -0800
 
 joystickwake (0.2.3) disco; urgency=medium
 

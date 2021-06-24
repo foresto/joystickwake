@@ -23,8 +23,8 @@ Description
 Linux gamers often find themselves unexpectedly staring at a blank screen,
 because their display server fails to recognize game controllers as input
 devices, allowing the screen blanker to activate during gameplay.  This
-program works around the problem by temporarily disabling screen blankers
-when joystick activity is detected.
+program works around the problem by (temporarily) disabling screen blankers
+while joystick activity is detected.
 
 
 Operation
@@ -32,20 +32,25 @@ Operation
 
 Once installed, joystickwake launches automatically when a user logs in to
 any modern linux desktop environment.  It can also be run manually, either
-from a command prompt or from a user-created menu entry.  It then monitors
-udev to find joystick devices (including those that are plugged in later)
-and reacts to activity from any of them.
+from a command prompt or from a user-created menu entry, so formal installation
+is not required.
 
-The screen is kept awake using external commands, allowing compatibility
+While running, it monitors udev to find joystick devices (including any that
+are plugged in later) and reacts to activity from any of them.
+
+The screen is kept awake by periodically running simple commands provided by
+whatever screen blanker is in use.  This approach keeps joystickwake compatible
 with just about every screensaver and power management system there is.
 
 The first time joystick activity is detected, all known wake commands will
 be run.  Those that fail will be skipped thereafter.  A minimum time between
 wakes is always observed.  Joystickwake thereby learns the needs of the host
-system, avoids unnecessary work, and minimizes log clutter.  In practice, it
-is very lightweight.
+system, avoids causing lag with unnecessary work, and minimizes log clutter.
+In practice, it is very lightweight.
 
-If all of the wake commands fail, joystickwake will quit.
+If all of the wake commands fail, it usually means that the screen blanker
+requires a custom command that has not yet been configured, so joystickwake
+will quit.
 
 If the python3 Xlib package is installed, joystickwake will quit when the
 desktop session ends.  Otherwise, it will quit when its parent process exits.
@@ -60,7 +65,7 @@ Configuration and Options
 --------------------------
 
 In many desktop environments, no configuration is needed.  Joystickwake
-comes pre-configured with commands that are known to defer DPMS power-off
+comes pre-configured with commands that will defer DPMS power-off
 and common screensavers.  Those commands are::
 
     xset dpms force on s reset
@@ -100,9 +105,9 @@ If joystickwake logs a "custom waker failed" message, it means the custom
 command either produced an error or could not be executed.  If it logs a
 "custom waker succeeded" message, and pressing a joystick button wakes the
 screen, then the command works.  It can then be saved in the configuration
-file for future login sessions.  (Of course, This experiment is best done
-with the screen blanker set for a very short timeout, so the command being
-tested has a chance to actually wake the screen.)
+file for future login sessions.  (Of course, This experiment is best done with
+the screen blanker set for a very short timeout, so the screen will blank while
+being observed, and the command being tested will have a chance to wake it.)
 
 When run in a terminal window, Control+C will tell joystickwake to quit.
 
