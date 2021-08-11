@@ -6,7 +6,7 @@ A joystick-aware screen waker
 -----------------------------
 
 :Manual section: 1
-:Date:           2020-07-09
+:Date:           2021-08-11
 
 
 Synopsis

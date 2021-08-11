@@ -1,3 +1,10 @@
+joystickwake (0.2.5) focal; urgency=medium
+
+  * Add a built-in waker command for KDE plasma.
+  * Document a custom waker command for KDE screen energy saving on XWayland.
+
+ -- Forest <forestix@sonic.net>  Wed, 11 Aug 2021 15:07:32 -0700
+
 joystickwake (0.2.4a) focal; urgency=medium
 
   * No functional changes.
