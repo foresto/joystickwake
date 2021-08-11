@@ -105,9 +105,9 @@ If joystickwake logs a "custom waker failed" message, it means the custom
 command either produced an error or could not be executed.  If it logs a
 "custom waker succeeded" message, and pressing a joystick button wakes the
 screen, then the command works.  It can then be saved in the configuration
-file for future login sessions.  (Of course, This experiment is best done with
-the screen blanker set for a very short timeout, so the screen will blank while
-being observed, and the command being tested will have a chance to wake it.)
+file for future login sessions.  (This experiment is best done with the screen
+blanker set for a very short timeout, so the screen will blank while being
+observed and the command being tested will have a chance to wake it.)
 
 When run in a terminal window, Control+C will tell joystickwake to quit.
 
