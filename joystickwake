@@ -345,6 +345,7 @@ DEFAULT_WAKERS = [
     ExecWaker('gnome-screensaver-command', '--deactivate', name="GNOME"),
     ExecWaker('mate-screensaver-command', '--poke', name="MATE"),
     ExecWaker('xfce4-screensaver-command', '--poke', name="Xfce"),
+    ExecWaker('qdbus', 'org.freedesktop.ScreenSaver', '/ScreenSaver', 'SimulateUserActivity', name='KDE'),
     ]
 
 
