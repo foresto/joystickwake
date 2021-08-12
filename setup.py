@@ -35,7 +35,7 @@ setup(
     description="Joystick-aware screen waker",
     long_description=read_readme('README.rst'),
     author='Forest',
-    author_email='forestcode@ixio.org',
+    author_email='forestix@sonic.net',
     url='https://github.com/foresto/joystickwake',
     requires=['pyudev'],
     install_requires=['pyudev'],  # for pip
