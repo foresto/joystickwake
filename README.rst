@@ -6,7 +6,7 @@ A joystick-aware screen waker
 -----------------------------
 
 :Manual section: 1
-:Date:           2021-08-11
+:Date:           2021-08-20
 
 
 Synopsis
@@ -65,7 +65,7 @@ Configuration and Options
 --------------------------
 
 In many desktop environments, no configuration is needed.  Joystickwake
-comes pre-configured with commands that will defer DPMS power-off
+comes preconfigured with commands that will defer DPMS power-off
 and common screensavers.  Those commands are::
 
     xset dpms force on s reset
@@ -110,7 +110,7 @@ file for future login sessions.  (This experiment is best done with the screen
 blanker set for a very short timeout, so the screen will blank while being
 observed and the command being tested will have a chance to wake it.)
 
-KDE Plasma + XWayland users might find that joystickwake's pre-configured
+KDE Plasma + XWayland users might find that joystickwake's preconfigured
 commands do not suppress the screen energy saving feature.  This appears to be
 a bug in KDE's SimulateUserActivity implementation, reported as bug #440882.
 The following custom command may help in that case::
