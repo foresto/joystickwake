@@ -52,14 +52,11 @@ class Waker:
         dbus-send --type=method_call --dest=org.gnome.ScreenSaver \
         /org/gnome/ScreenSaver org.gnome.ScreenSaver.SetActive boolean:false
     """
-    def __init__(self, loop=None):
+    def __init__(self):
         """Initialize the screen waker.
-
-        :param loop:        An asyncio event loop.
         """
         self.failed = False  # Subclasses must set this to True if they fail.
         self._log = logging.getLogger('waker')
-        self._loop = loop or asyncio.get_event_loop()
 
     def wake(self):
         """Wake the screen. Set self.failed on failure."""
@@ -69,7 +66,7 @@ class Waker:
 class ExecWaker(Waker):
     """A subprocess-based screen waker.
     """
-    def __init__(self, *args, shellcmd=None, name=None, loop=None):
+    def __init__(self, *args, shellcmd=None, name=None):
         """Initialize the screen waker.
 
         :param args:        A sequence of program agruments for passing to
@@ -78,9 +75,8 @@ class ExecWaker(Waker):
                             asyncio.create_subprocess_shell().
                             This can be used instead of `args`.
         :param name:        A name for this waker.
-        :param loop:        An asyncio event loop.
         """
-        super().__init__(loop=loop)
+        super().__init__()
 
         if args and shellcmd:
             raise ValueError("Both args and shellcmd were specified.")
@@ -114,17 +110,15 @@ class ExecWaker(Waker):
                 *self._args,
                 stdin=asyncio.subprocess.DEVNULL,
                 stdout=outstream,
-                stderr=outstream,
-                loop=self._loop)
+                stderr=outstream)
         else:
             launcher_coroutine = asyncio.create_subprocess_shell(
                 self._shellcmd,
                 stdin=asyncio.subprocess.DEVNULL,
                 stdout=outstream,
-                stderr=outstream,
-                loop=self._loop)
+                stderr=outstream)
 
-        exectask = asyncio.Task(launcher_coroutine, loop=self._loop)
+        exectask = asyncio.ensure_future(launcher_coroutine)
         exectask.add_done_callback(self._on_exec)
 
     def _on_exec(self, exectask):
@@ -171,8 +165,8 @@ class ExecWaker(Waker):
 class JoystickWatcher:
     """A joystick activity monitor.
     """
-    def __init__(self, wakers=(), interval=10, useevdev=False, loop=None):
-        """Initialize internal data and stores an event loop for later use.
+    def __init__(self, wakers=(), interval=10, useevdev=False):
+        """Initialize internal data.
 
         :param wakers:      An iterable of Waker instances to call when joystick
                             activity is detected.
@@ -182,7 +176,6 @@ class JoystickWatcher:
                             (The latter is the older joystick device interface.
                             It allows calibration and is less chatty than evdev,
                             making it the better one for games and minimal I/O.)
-        :param loop:        An asyncio event loop.
 
         Monitoring will begin when start() is called and the event loop runs.
         """
@@ -190,7 +183,6 @@ class JoystickWatcher:
         self._wake_interval = interval
         self._last_wake = 0  # time when we last woke the screen
         self._best_devname_prefix = 'event' if useevdev else 'js'
-        self._loop = loop or asyncio.get_event_loop()
         self._log = logging.getLogger('watcher')
 
         # The evdev & joydev nodes for the same joystick will share a parent,
@@ -200,7 +192,7 @@ class JoystickWatcher:
         self._monitor = pyudev.Monitor.from_netlink(self._context)
         self._monitor.filter_by(subsystem='input')
 
-    def start(self):
+    async def start(self):
         """Find existing joysticks and add device monitors to the event loop.
         """
         if not self._wakers:
@@ -208,7 +200,8 @@ class JoystickWatcher:
             sys.exit(1)
         self._watch_known_joysticks()
         self._monitor.start()
-        self._loop.add_reader(self._monitor.fileno(), self._poll_udev)
+        asyncio.get_event_loop().add_reader(
+            self._monitor.fileno(), self._poll_udev)
 
     def _watch_known_joysticks(self):
         """Start watching known joystick devices for activity.
@@ -264,12 +257,13 @@ class JoystickWatcher:
 
         # Now that we're sure we can use the device, close any old one.
         if olddevinfo:
-            self._loop.remove_reader(olddevinfo.fd)
+            asyncio.get_event_loop().remove_reader(olddevinfo.fd)
             os.close(olddevinfo.fd)
             self._log.info("%s discarded in favor of its twin: %s",
                 olddevinfo.name, newdevinfo.name)
 
-        self._loop.add_reader(newdevinfo.fd, self._read_fd, newdevinfo)
+        asyncio.get_event_loop().add_reader(
+            newdevinfo.fd, self._read_fd, newdevinfo)
         self._devinfo_by_parent[device.parent] = newdevinfo
 
         self._log.info("%s is a joystick: %s",
@@ -286,7 +280,7 @@ class JoystickWatcher:
             return
 
         del self._devinfo_by_parent[device.parent]
-        self._loop.remove_reader(devinfo.fd)
+        asyncio.get_event_loop().remove_reader(devinfo.fd)
         try:
             os.close(devinfo.fd)
         except OSError as error:
@@ -307,7 +301,7 @@ class JoystickWatcher:
         except OSError as error:
             if error.errno != errno.ENODEV:
                 raise
-            self._loop.remove_reader(devinfo.fd)
+            asyncio.get_event_loop().remove_reader(devinfo.fd)
 
     def _wake_screen(self):
         """Wake the screen if we haven't done so recently.
@@ -459,7 +453,8 @@ def main():
     init_logging(config)
 
     log = logging.getLogger()
-    loop = asyncio.get_event_loop()
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
 
     if not stop_loop_when_xserver_quits(log, loop):
         log.info("will exit when our parent process ends")
@@ -471,7 +466,7 @@ def main():
 
     try:
         watcher = JoystickWatcher(wakers=wakers, interval=config.interval)
-        watcher.start()
+        loop.run_until_complete(watcher.start())
         loop.run_forever()
 
     except KeyboardInterrupt:
