@@ -1,9 +1,9 @@
-joystickwake (0.2.7) focal; urgency=medium
+joystickwake (0.2.8) focal; urgency=medium
 
   * Avoid deprecation & breakage caused by Python 3.10.
   * Move xset dpms to a separate waker. (Some systems lack the DPMS extension.)
 
- -- Forest <forestix@sonic.net>  Tue, 21 Dec 2021 20:04:11 -0800
+ -- Forest <forestix@sonic.net>  Tue, 21 Dec 2021 21:05:38 -0800
 
 joystickwake (0.2.5) focal; urgency=medium
 
