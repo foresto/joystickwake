@@ -6,7 +6,7 @@ A joystick-aware screen waker
 -----------------------------
 
 :Manual section: 1
-:Date:           2021-08-20
+:Date:           2021-21-21
 
 
 Synopsis
@@ -23,8 +23,8 @@ Description
 Linux gamers often find themselves unexpectedly staring at a blank screen,
 because their display server fails to recognize game controllers as input
 devices, allowing the screen blanker to activate during gameplay.  This
-program works around the problem by (temporarily) disabling screen blankers
-while joystick activity is detected.
+program works around the problem by suppressing screen blankers while
+joystick activity is detected.
 
 
 Operation
@@ -68,7 +68,8 @@ In many desktop environments, no configuration is needed.  Joystickwake
 comes preconfigured with commands that will defer DPMS power-off
 and common screensavers.  Those commands are::
 
-    xset dpms force on s reset
+    xset dpms force on
+    xset s reset
     xscreensaver-command -deactivate
     gnome-screensaver-command --deactivate
     mate-screensaver-command --poke

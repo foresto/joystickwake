@@ -334,7 +334,8 @@ class Configuration:
 
 
 DEFAULT_WAKERS = [
-    ExecWaker('xset', 'dpms', 'force', 'on', 's', 'reset', name="X settings"),
+    ExecWaker('xset', 'dpms', 'force', 'on', name="X power management"),
+    ExecWaker('xset', 's', 'reset', name="X screen blanker"),
     ExecWaker('xscreensaver-command', '-deactivate', name="XScreenSaver"),
     ExecWaker('gnome-screensaver-command', '--deactivate', name="GNOME"),
     ExecWaker('mate-screensaver-command', '--poke', name="MATE"),
