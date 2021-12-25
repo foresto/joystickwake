@@ -1,3 +1,11 @@
+joystickwake (0.3) focal; urgency=medium
+
+  * Use stderr regex to detect xset errors, since it always uses exit status 0.
+  * Keep a reference to ensure_future() result, to avoid premature task cleanup.
+  * Declare python 3.5 requirement, since we now use async/await syntax.
+
+ -- Forest <forestix@sonic.net>  Sat, 25 Dec 2021 00:00:01 -0800
+
 joystickwake (0.2.8) focal; urgency=medium
 
   * Avoid deprecation & breakage caused by Python 3.10.
