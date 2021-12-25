@@ -24,6 +24,7 @@ import itertools
 import logging
 import os
 import os.path
+import re
 import signal
 import sys
 import time
@@ -58,7 +59,7 @@ class Waker:
         self.failed = False  # Subclasses must set this to True if they fail.
         self._log = logging.getLogger('waker')
 
-    def wake(self):
+    async def wake(self):
         """Wake the screen. Set self.failed on failure."""
         raise NotImplementedError
 
@@ -66,7 +67,7 @@ class Waker:
 class ExecWaker(Waker):
     """A subprocess-based screen waker.
     """
-    def __init__(self, *args, shellcmd=None, name=None):
+    def __init__(self, *args, shellcmd=None, regex=None, name=None):
         """Initialize the screen waker.
 
         :param args:        A sequence of program agruments for passing to
@@ -74,6 +75,9 @@ class ExecWaker(Waker):
         :param shellcmd:    A command line string for passing to
                             asyncio.create_subprocess_shell().
                             This can be used instead of `args`.
+        :param regex:       A regular expression indicating a failure when
+                            it matches a command's stderr output.
+                            (Mainly for xset, which has no useful exit status.)
         :param name:        A name for this waker.
         """
         super().__init__()
@@ -85,6 +89,7 @@ class ExecWaker(Waker):
 
         self._args = args
         self._shellcmd = shellcmd
+        self._errexpr = re.compile(regex) if regex else None
         self._name = name
         if not self._name:
             self._name = args[0] if args else shellcmd.split()[0]
@@ -93,65 +98,57 @@ class ExecWaker(Waker):
         # screensaver simply isn't running yet, so we retry a few times.
         self._softfailcount = 0
 
-    def wake(self):
+    async def wake(self):
         """Wake the screen by running a program.
         """
         self._log.debug("%s waker running command: %s", self,
             ' '.join(self._args) if self._args else self._shellcmd)
 
-        if self._log.level <= logging.DEBUG:
-            outstream = None  # allow command output
-        else:
-            outstream = asyncio.subprocess.DEVNULL  # silence command output
-
-        if self._args:
-            #pylint:disable=no-value-for-parameter
-            launcher_coroutine = asyncio.create_subprocess_exec(
-                *self._args,
-                stdin=asyncio.subprocess.DEVNULL,
-                stdout=outstream,
-                stderr=outstream)
-        else:
-            launcher_coroutine = asyncio.create_subprocess_shell(
-                self._shellcmd,
-                stdin=asyncio.subprocess.DEVNULL,
-                stdout=outstream,
-                stderr=outstream)
-
-        exectask = asyncio.ensure_future(launcher_coroutine)
-        exectask.add_done_callback(self._on_exec)
-
-    def _on_exec(self, exectask):
-        """Called when the subprocess is launched or fails to launch.
-        """
         try:
-            process = exectask.result()
-            waittask = asyncio.Task(process.wait())
-            waittask.add_done_callback(self._on_exit)
-
+            if self._args:
+                #pylint:disable=no-value-for-parameter
+                process = await asyncio.create_subprocess_exec(
+                    *self._args,
+                    stdin=asyncio.subprocess.DEVNULL,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE)
+            else:
+                process = await asyncio.create_subprocess_shell(
+                    self._shellcmd,
+                    stdin=asyncio.subprocess.DEVNULL,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE)
         except OSError as error:
             self.failed = True
             self._log.info("%s waker is unavailable: %s", self, error)
             return
 
-    def _on_exit(self, waittask):
-        """Called when the subprocess exits.
-        """
-        returncode = waittask.result()
-        if not returncode:
-            self._softfailcount = 0
+        outbytes, errbytes = await process.communicate()
+
+        if self._log.getEffectiveLevel() <= logging.DEBUG:
+            sys.stdout.buffer.write(outbytes)
+            sys.stderr.buffer.write(errbytes)
+        errtext = errbytes.decode('utf-8')
+        errmatch = errtext and self._errexpr and self._errexpr.search(errtext)
+
+        if process.returncode:
+            reason = "exit status {}".format(process.returncode)
+        elif errmatch:
+            reason = "stderr contained {!r}".format(errmatch[0])
+        else:
             self._log.debug("%s waker succeeded", self)
+            self._softfailcount = 0
             return
 
         self._softfailcount += 1
         if self._softfailcount < 3:
-            self._log.info("%s waker failed: exit status %s (try %s)",
-                self, returncode, self._softfailcount)
+            self._log.info("%s waker failed (try %s): %s",
+                self, self._softfailcount, reason)
             return
 
         self.failed = True
-        self._log.info("%s waker failed: exit status %s (try %s; giving up)",
-            self, returncode, self._softfailcount)
+        self._log.info("%s waker failed (try %s; giving up): %s",
+            self, self._softfailcount, reason)
 
     def __str__(self):
         """Return a string that identifies this waker.
@@ -180,6 +177,7 @@ class JoystickWatcher:
         Monitoring will begin when start() is called and the event loop runs.
         """
         self._wakers = list(wakers)
+        self._waking = None # a Task reference to let wake routines complete
         self._wake_interval = interval
         self._last_wake = 0  # time when we last woke the screen
         self._best_devname_prefix = 'event' if useevdev else 'js'
@@ -318,8 +316,8 @@ class JoystickWatcher:
             sys.exit(1)
 
         self._log.info("waking the screen")
-        for waker in self._wakers:
-            waker.wake()
+        wakeroutines = [waker.wake() for waker in self._wakers]
+        self._waking = asyncio.ensure_future(asyncio.gather(*wakeroutines))
 
 
 # ======================================================================
@@ -334,8 +332,8 @@ class Configuration:
 
 
 DEFAULT_WAKERS = [
-    ExecWaker('xset', 'dpms', 'force', 'on', name="X power management"),
-    ExecWaker('xset', 's', 'reset', name="X screen blanker"),
+    ExecWaker('xset', 'dpms', 'force', 'on', regex=".+", name="X DPMS"),
+    ExecWaker('xset', 's', 'reset', regex=".+", name="X screen blanker"),
     ExecWaker('xscreensaver-command', '-deactivate', name="XScreenSaver"),
     ExecWaker('gnome-screensaver-command', '--deactivate', name="GNOME"),
     ExecWaker('mate-screensaver-command', '--poke', name="MATE"),
