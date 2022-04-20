@@ -13,7 +13,6 @@ Architecture: all
 Depends: ${python3:Depends}, ${misc:Depends}, python3-pyudev
 Recommends: python3-xlib
 Description: joystick-aware screen waker
- This program attempts to prevent screen blankers from activating while
- joysticks and other game controllers are in use.  It supports several
- popular screen savers by default, and can be configured with custom
- commands to support others.
+ Suppresses screen blankers while game controllers are in use.
+ Supports several popular screen savers by default, and can be configured
+ with custom commands to support others.
