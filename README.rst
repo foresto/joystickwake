@@ -114,7 +114,9 @@ observed and the command being tested will have a chance to wake it.)
 Users of KDE Plasma with XWayland might find that joystickwake's preconfigured
 commands do not suppress the screen energy saving feature.  This appears to be
 a bug in KDE's SimulateUserActivity implementation, reported as bug #440882.
-The following custom command may help in that case::
+A KDE maintainer stated in that report that XWayland is not supported, so the
+bug seems unlikely to be fixed, but configuring the following custom waker
+command in joystickwake may be an effective workaround::
 
     qdbus org.kde.Solid.PowerManagement /org/kde/Solid/PowerManagement wakeup
 
