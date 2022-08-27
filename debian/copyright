@@ -2,7 +2,7 @@ Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Source: https://github.com/foresto/joystickwake
 
 Files: *
-Copyright: Copyright 2014-2021 Forest <forestix@sonic.net>
+Copyright: Copyright 2014-2023 Forest <forestix@sonic.net>
 License: Expat
 
 License: Expat
