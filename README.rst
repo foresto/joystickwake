@@ -6,7 +6,7 @@ A joystick-aware screen waker
 -----------------------------
 
 :Manual section: 1
-:Date:           2021-12-25
+:Date:           2023-01-29
 
 
 Synopsis
@@ -27,30 +27,38 @@ program works around the problem by suppressing screen blankers while
 joystick activity is detected.
 
 
+Overview
+--------
+
+When installed from a package, joystickwake launches automatically when a user
+logs in to any modern linux desktop environment.  It can also be run manually,
+without formal installation, since the executable is self-contained.
+
+While running, it monitors udev to find devices with the ID_INPUT_JOYSTICK
+property (including devices that are plugged in later) and reacts to activity
+from any of them.
+
+The screen is kept awake by periodically running a heartbeat-like wake command:
+an external tool provided by the system.  Most desktop environments and screen
+savers include such a command, and joystickwake knows how to use the common
+ones, so there is normally no need for a user to install or configure one.
+This design keeps joystickwake compatible with just about every screensaver and
+power management system there is.
+
+
 Operation
 ---------
 
-Once installed, joystickwake launches automatically when a user logs in to
-any modern linux desktop environment.  It can also be run manually, either
-from a command prompt or from a user-created menu entry, so formal installation
-is not required.
+When joystick activity is detected, all known wake commands are executed.
+Any command reporting an error or missing from the system will be skipped
+thereafter.  This process repeats in a loop, with a cooldown period between
+wakes.  Joystickwake thereby learns which commands are available on the host
+system, avoids excessive work that might cause game lag, and minimizes log
+clutter.  In practice, it is very lightweight.
 
-While running, it monitors udev to find joystick devices (including any that
-are plugged in later) and reacts to activity from any of them.
-
-The screen is kept awake by periodically running simple commands provided by
-whatever screen blanker is in use.  This approach keeps joystickwake compatible
-with just about every screensaver and power management system there is.
-
-The first time joystick activity is detected, all known wake commands will
-be run.  Those that fail will be skipped thereafter.  A minimum time between
-wakes is always observed.  Joystickwake thereby learns the needs of the host
-system, avoids causing lag with unnecessary work, and minimizes log clutter.
-In practice, it is very lightweight.
-
-If all of the wake commands fail, it usually means that the screen blanker
-requires a custom command that has not yet been configured, so joystickwake
-will quit.
+If all known wake commands fail, joystickwake will quit.  This could happen
+if no screen blanker is running, or if one that is running requires a custom
+wake command (see below).
 
 If the python3 Xlib package is installed, joystickwake will quit when the
 desktop session ends.  Otherwise, it will quit when its parent process exits.
@@ -58,15 +66,15 @@ desktop session ends.  Otherwise, it will quit when its parent process exits.
 
 Log messages are written to standard error, which is normally captured by the
 desktop environment in a file such as ``$HOME/.xsession-errors``.  At the
-default log level, very few messages will be produced, if any.
+default log level, few messages will be produced, if any.
 
 
 Configuration and Options
 --------------------------
 
 In many desktop environments, no configuration is needed.  Joystickwake
-comes preconfigured with commands that will defer DPMS power-off
-and common screensavers.  Those commands are::
+comes preconfigured with commands that will suppress common screensavers
+and DPMS power-off.  Those commands are::
 
     xset dpms force on
     xset s reset
@@ -88,39 +96,111 @@ This example illustrates the configuration file format and settings::
     interval = 30                   # Number of seconds between wakes
     loglevel = warning              # Also: debug, info, error, critical
 
-Command line options ``--command``, ``--interval``, and ``--loglevel`` are
-available, and will override their corresponding config file settings.
+Command line options ``--command``, ``--interval``, and ``--loglevel``
+will override their corresponding config file settings.
+
+
+Troubleshooting
+---------------
+
+The first step in diagnosing a problem is to set joystickwake's log level
+to ``debug``, restart it, and look for unexpected messages when the problem
+occurs.  Running it in a terminal window may help with log visibility.
+
+Note:  Joystickwake cannot see your screen, and therefore has no way to be
+certain of its state.  A success message in the log means only that a wake
+command ran without reporting an error.  That is a good sign, but not always
+sufficient to wake the screen, especially if that wake command was designed
+for a screen blanker other than the one in use.
+
+Every log message begins with "joystickwake" and a timestamp, so if you see
+text in some other format, it comes from another program.  For example, one of
+the wake commands might print a message about being unable to find its screen
+saver, or your shell's command-not-found script might offer suggestions when
+joystickwake probes for a command that is not installed on your system.  Both
+of these examples are harmless, and should appear only a few times, since
+joystickwake avoids failing commands after a few tries.
+
+If joystickwake keeps the screen awake even when all joysticks are idle, it is
+likely due to "stick drift", meaning that a joystick either is not centering
+itself properly or is suffering from a faulty sensor.  This is unfortunately
+common in modern game controllers.  Other than replacing the hardware, or
+disconnecting it when not in use, this can be resolved by calibrating the dead
+zones used by the linux evdev and joystick APIs, as described here:
+
+https://wiki.archlinux.org/title/Gamepad#Setting_up_deadzones_and_calibration
+
+If the screen wakes with joystick input, but never blanks again even when all
+joysticks are disconnected, it could be due to a mismatch between your screen
+blanker and one of the wake commands installed on your system.  For example, a
+modern GNOME Shell might misinterpret D-Bus messages sent by an old
+gnome-screensaver-command.  Removing that command from your system and
+restarting your desktop session should help.
+
+If the log shows at least one waker succeeding but the screen still blanks
+while a joystick is in use, your screen blanker's timeout might be too short
+for joystickwake.  Increasing that timeout or decreasing joystickwake's
+``interval`` setting might help.
+
+Alternatively, it is possible that multiple screen blankers are running, such
+as a graphical screen saver and a power manager, with joystickwake only knowing
+how to wake one of them.  The solution is to find a command that will wake the
+problematic one, make sure that command is installed, and if joystickwake
+doesn't recognize it by default, configure it as a custom command.
+
+If all wakers fail and the screen still blanks, the solution is the same as
+above:  Identify your desktop's screen blanker, install a command that will
+wake it, and (if necessary) configure joystickwake to use it.
 
 
 Custom Wake Commands
 --------------------
 
-If none of the built-in commands work with a particular desktop environment,
-finding one that does can require some experimentation.  For example, to
-determine whether ``test command`` will wake the screen, try it with
-joystickwake running in a terminal window, using a short wake interval and a
-verbose log level, like so::
+If none of joystickwake's preconfigured commands wake the screen in a
+particular desktop environment, finding one that does can require some effort.
+Asking community members who use the same environment might yield a helpful
+answer.  Once you know the name of the component that blanks the screen,
+consult its documentation to see if it has a command line tool for controlling
+it.  It may also be worthwhile to query your linux distribution's package
+manger to see if such a tool was installed along with the screen blanker.
 
-    joystickwake --loglevel debug --interval 2 --command "test command"
+After identifying a command that might work, the next step is to test it,
+preferably without joystickwake running.  The simplest way is to set your
+screen blanker to use a short timeout (e.g. one minute), run the command
+preceded by a ``sleep`` delay longer than the blanker's timeout, and let
+your system sit idle to see if it works.
+
+For example, this command line does it with a 77 second delay::
+
+    sleep 77; my-cmd --wake
+
+If the screen blanks as expected and then wakes after the sleep delay, the
+command will probably work with joystickwake.  You can try it in a terminal
+window, like so::
+
+    joystickwake --loglevel debug --interval 2 --command "my-cmd --wake"
 
 If joystickwake logs a "custom waker failed" message, it means the custom
-command either produced an error or could not be executed.  If it logs a
-"custom waker succeeded" message, and pressing a joystick button wakes the
-screen, then the command works.  It can then be saved in the configuration
-file for future login sessions.  (This experiment is best done with the screen
-blanker set for a very short timeout, so the screen will blank while being
-observed and the command being tested will have a chance to wake it.)
+command either produced an error or could not be executed.  If pressing a
+joystick button wakes the screen and logs a "custom waker succeeded" message,
+then the command works, and can be saved in the configuration file for future
+login sessions.
+
+When run in a terminal window, Control+C will tell joystickwake to quit.
+
+The xdg-screensaver tool might work as a custom wake command in some
+environments::
+
+    xdg-screensaver reset
 
 Users of KDE Plasma with XWayland might find that joystickwake's preconfigured
 commands do not suppress the screen energy saving feature.  This appears to be
 a bug in KDE's SimulateUserActivity implementation, reported as bug #440882.
 A KDE maintainer stated in that report that XWayland is not supported, so the
-bug seems unlikely to be fixed, but configuring the following custom waker
-command in joystickwake may be an effective workaround::
+bug seems unlikely to be fixed, but the following custom wake command might
+be an effective workaround::
 
     qdbus org.kde.Solid.PowerManagement /org/kde/Solid/PowerManagement wakeup
-
-When run in a terminal window, Control+C will tell joystickwake to quit.
 
 
 See Also
@@ -133,7 +213,7 @@ See Also
 - xdg-screensaver (from xdg-utils, aka Portland) attempts to be a unified
   screensaver control interface:
   https://www.freedesktop.org/wiki/Software/xdg-utils/
-- Caffeine inhibits the screensaver when it finds a fullscreen window:
+- Caffeine runs `xdg-screensaver suspend` when it finds a fullscreen window:
   https://code.launchpad.net/caffeine
 - Faux GNOME Screensaver is a GNOME compatibility layer for XScreenSaver:
   https://github.com/jefferyto/faux-gnome-screensaver
