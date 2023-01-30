@@ -8,10 +8,6 @@ __version__ = '0.3'
 __version_info__ = tuple(int(n) for n in __version__.split('.'))
 
 
-#pylint:disable=bad-continuation
-#pylint:disable=wrong-import-position
-
-
 import argparse
 import asyncio
 from collections import namedtuple
@@ -53,6 +49,8 @@ class Waker:
         dbus-send --type=method_call --dest=org.gnome.ScreenSaver \
         /org/gnome/ScreenSaver org.gnome.ScreenSaver.SetActive boolean:false
     """
+    #pylint:disable=too-few-public-methods
+
     def __init__(self):
         """Initialize the screen waker.
         """
@@ -162,6 +160,9 @@ class ExecWaker(Waker):
 class JoystickWatcher:
     """A joystick activity monitor.
     """
+    #pylint:disable=too-few-public-methods
+    #pylint:disable=too-many-instance-attributes
+
     def __init__(self, wakers=(), interval=10, useevdev=False):
         """Initialize internal data.
 
@@ -326,6 +327,7 @@ class JoystickWatcher:
 class Configuration:
     """Configurable program settings.
     """
+    #pylint:disable=too-few-public-methods
     loglevel = 'warning'
     interval = 30  # minimum number of seconds between screen wakes
     command = None # custom screen waker shell command, as a string
