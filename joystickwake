@@ -161,12 +161,12 @@ class JoystickWatcher:
     #pylint:disable=too-few-public-methods
     #pylint:disable=too-many-instance-attributes
 
-    def __init__(self, wakers=(), interval=10, useevdev=False):
+    def __init__(self, wakers=(), cooldown=10, useevdev=False):
         """Initialize internal data.
 
         :param wakers:      An iterable of Waker instances to call when joystick
                             activity is detected.
-        :param interval:    Minimum number of seconds between calling wakers.
+        :param cooldown:    Minimum number of seconds between calling wakers.
         :param useevdev:    True to prefer /dev/input/event* over /dev/input/js*
                             when a joystick has both.
                             (The latter is the older joystick device interface.
@@ -177,7 +177,7 @@ class JoystickWatcher:
         """
         self._wakers = list(wakers)
         self._waking = None # a Task reference to let wake routines complete
-        self._wake_interval = interval
+        self._cooldown = cooldown
         self._last_wake = 0  # time when we last woke the screen
         self._best_devname_prefix = 'event' if useevdev else 'js'
         self._log = logging.getLogger('watcher')
@@ -304,7 +304,7 @@ class JoystickWatcher:
         """Wake the screen if we haven't done so recently.
         """
         now = time.monotonic()
-        if now - self._last_wake < self._wake_interval:
+        if now - self._last_wake < self._cooldown:
             return
         self._last_wake = now
 
@@ -327,7 +327,8 @@ class Configuration:
     """
     #pylint:disable=too-few-public-methods
     loglevel = 'warning'
-    interval = 30  # minimum number of seconds between screen wakes
+    cooldown = 30  # minimum number of seconds between screen wakes
+    interval = 0   # deprecated since v0.4 (renamed to cooldown)
     command = None # custom screen waker shell command, as a string
 
 
@@ -353,7 +354,8 @@ def parse_command_line(config):
         description="Wakes the screen when joysticks are active.")
     parser.add_argument('--loglevel',
         choices='debug info warning error critical'.split())
-    parser.add_argument('--interval', type=int)
+    parser.add_argument('--cooldown', type=int)
+    parser.add_argument('--interval', type=int, help=argparse.SUPPRESS)
     parser.add_argument('--command')
     parser.parse_args(namespace=config)
 
@@ -451,8 +453,12 @@ def main():
     load_config_file(config)
     parse_command_line(config)
     init_logging(config)
-
     log = logging.getLogger()
+
+    if getattr(config, 'interval'):
+        log.warning("'interval' option is deprecated; use 'cooldown' instead")
+        config.cooldown = config.interval
+
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
 
@@ -465,7 +471,7 @@ def main():
         wakers.append(ExecWaker(shellcmd=config.command, name="custom"))
 
     try:
-        watcher = JoystickWatcher(wakers=wakers, interval=config.interval)
+        watcher = JoystickWatcher(wakers=wakers, cooldown=config.cooldown)
         loop.run_until_complete(watcher.start())
         loop.run_forever()
 

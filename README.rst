@@ -6,7 +6,7 @@ A joystick-aware screen waker
 -----------------------------
 
 :Manual section: 1
-:Date:           2023-01-29
+:Date:           2023-01-30
 
 
 Synopsis
@@ -14,7 +14,7 @@ Synopsis
 
     joystickwake -h|--help
 
-    joystickwake [--command cmd] [--interval seconds] [--loglevel level]
+    joystickwake [--command cmd] [--cooldown seconds] [--loglevel level]
 
 
 Description
@@ -93,10 +93,10 @@ following files::
 This example illustrates the configuration file format and settings::
 
     command = xdg-screensaver reset # This might work on some desktops
-    interval = 30                   # Number of seconds between wakes
+    cooldown = 30                   # Number of seconds between wakes
     loglevel = warning              # Also: debug, info, error, critical
 
-Command line options ``--command``, ``--interval``, and ``--loglevel``
+Command line options ``--command``, ``--cooldown``, and ``--loglevel``
 will override their corresponding config file settings.
 
 
@@ -140,7 +140,7 @@ restarting your desktop session should help.
 If the log shows at least one waker succeeding but the screen still blanks
 while a joystick is in use, your screen blanker's timeout might be too short
 for joystickwake.  Increasing that timeout or decreasing joystickwake's
-``interval`` setting might help.
+``cooldown`` setting might help.
 
 Alternatively, it is possible that multiple screen blankers are running, such
 as a graphical screen saver and a power manager, with joystickwake only knowing
@@ -178,7 +178,7 @@ If the screen blanks as expected and then wakes after the sleep delay, the
 command will probably work with joystickwake.  You can try it in a terminal
 window, like so::
 
-    joystickwake --loglevel debug --interval 2 --command "my-cmd --wake"
+    joystickwake --loglevel debug --cooldown 2 --command "my-cmd --wake"
 
 If joystickwake logs a "custom waker failed" message, it means the custom
 command either produced an error or could not be executed.  If pressing a
