@@ -229,7 +229,10 @@ class JoystickWatcher:
         """
         vendor = device.get('ID_VENDOR', "").replace('_', ' ')
         model = device.get('ID_MODEL', "").replace('_', ' ')
-        return ' '.join((vendor, model))
+        bus = device.get('ID_BUS')
+        if bus:
+            bus = '(' + bus + ')'
+        return ' '.join((vendor, model, bus)).strip()
 
     def _watch_device(self, device):
         """Start watching a udev device for activity, if it is a joystick.
