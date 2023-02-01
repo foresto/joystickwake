@@ -6,7 +6,7 @@ A joystick-aware screen waker
 -----------------------------
 
 :Manual section: 1
-:Date:           2023-01-30
+:Date:           2023-02-01
 
 
 Synopsis
@@ -56,9 +56,15 @@ wakes.  Joystickwake thereby learns which commands are available on the host
 system, avoids excessive work that might cause game lag, and minimizes log
 clutter.  In practice, it is very lightweight.
 
-If all known wake commands fail, joystickwake will quit.  This could happen
-if no screen blanker is running, or if one that is running requires a custom
-wake command (see below).
+If the python3 dbus-next package is installed, joystickwake will also try to
+inhibit the desktop environment's screen idle state for a short while after
+detecting activity, using the org.freedesktop.ScreenSaver interface.  This
+helps with certain environments whose heartbeat-style wake interfaces are
+missing or broken.
+
+If all known wakers fail, joystickwake will quit.  This could happen if no
+screen blanker is running, or if one that is running requires a custom wake
+command (see below).
 
 If the python3 Xlib package is installed, joystickwake will quit when the
 desktop session ends.  Otherwise, it will quit when its parent process exits.

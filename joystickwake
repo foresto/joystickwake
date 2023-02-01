@@ -15,6 +15,7 @@ import configparser
 import contextlib
 import ctypes
 import errno
+import functools
 import io
 import itertools
 import logging
@@ -25,12 +26,20 @@ import signal
 import sys
 import time
 
+try:
+    import dbus_next
+    import dbus_next.aio
+except ImportError:
+    pass
 import pyudev
 try:
     import Xlib.display
     import Xlib.error
 except ImportError:
     pass
+
+
+PROGRAM_NAME = os.path.basename(sys.argv[0])
 
 
 # ======================================================================
@@ -150,6 +159,91 @@ class ExecWaker(Waker):
         """Return a string that identifies this waker.
         """
         return self._name
+
+
+class IdleInhibitor(Waker):
+    """A client for the freedesktop.org Idle Inhibition Service.
+    https://specifications.freedesktop.org/idle-inhibit-spec/latest/re01.html
+    Launches a long-running task to communicate with that service,
+    and exposes a heartbeat-style control interface.
+    """
+    def __init__(self, cooldown):
+        """Initialize the screen waker.
+        """
+        super().__init__()
+        self.cooldown = cooldown    # hint for calculating inhibition hold time
+        self._timeout = 10          # dbus call timeout, in seconds
+        self._ping = None           # worker wake-up Event
+        self._worker = None         # task reference to let worker run forever
+
+    async def wake(self):
+        """Wake the screen by pinging our worker loop.
+        """
+        if not self._worker:
+            self._log.debug("%s starting worker", self)
+            self._ping = asyncio.Event()
+            self._worker = asyncio.ensure_future(self._work())
+
+        self._ping.set()
+
+    async def _work(self):
+        """Respond to pings by holding an Idle Inhibition Service session.
+        """
+        # Our inhibition hold time should be longer than the wake cooldown,
+        # but not too long, since KDE and GNOME won't restart their idle
+        # timers until after we stop inhibiting.
+        holdtime = self.cooldown * 2
+        busname = 'org.freedesktop.ScreenSaver'
+        buspath = '/org/freedesktop/ScreenSaver'
+        ifacename = busname
+        quickly = functools.partial(asyncio.wait_for, timeout=self._timeout)
+
+        try:
+            self._log.debug("%s connecting to the session bus", self)
+            bus = await quickly(dbus_next.aio.MessageBus().connect())
+            introspection = await quickly(bus.introspect(busname, buspath))
+            proxy = bus.get_proxy_object(busname, buspath, introspection)
+            iface = proxy.get_interface(ifacename)
+            self._log.debug("%s riding the bus as %s", self, bus.unique_name)
+
+            cookie = None
+            while True:
+                try:
+                    await asyncio.wait_for(self._ping.wait(),
+                        timeout=None if cookie is None else holdtime)
+                    self._ping.clear()
+
+                except asyncio.TimeoutError:
+                    self._log.debug("%s releasing inhibition", self)
+                    await quickly(iface.call_un_inhibit(cookie))
+                    cookie = None
+                    self._log.debug("%s standing by", self)
+
+                else:
+                    if cookie is None:
+                        self._log.debug("%s requesting inhibition", self)
+                        cookie = await quickly(
+                            iface.call_inhibit(PROGRAM_NAME, "Active joystick"))
+                    self._log.debug("%s inhibiting for %ds", self, holdtime)
+
+        except NameError:
+            self._log.info("%s is unavailable: needs python3-dbus-next", self)
+        except (
+            dbus_next.DBusError,
+            dbus_next.InterfaceNotFoundError,
+            ) as err:
+            self._log.info("%s is unavailable: %s", self, err)
+        except asyncio.TimeoutError:
+            self._log.warning("%s failed: dbus call timed out", self)
+        except Exception as err:  #pylint:disable=broad-except
+            self._log.info("%s failed: %s", self, repr(err))
+
+        self.failed = True
+
+    def __str__(self):
+        """Return a string that identifies this waker.
+        """
+        return "Idle Inhibitor"
 
 
 # ======================================================================
@@ -333,6 +427,7 @@ class Configuration:
     cooldown = 30  # minimum number of seconds between screen wakes
     interval = 0   # deprecated since v0.4 (renamed to cooldown)
     command = None # custom screen waker shell command, as a string
+    inhibit = True # hidden option for disabling the Idle Inhibitor
 
 
 DEFAULT_WAKERS = [
@@ -348,9 +443,6 @@ DEFAULT_WAKERS = [
     ]
 
 
-PROGRAM_NAME = os.path.basename(sys.argv[0])
-
-
 def parse_command_line(config):
     """Apply command line options to the global configuration.
     """
@@ -361,6 +453,8 @@ def parse_command_line(config):
     parser.add_argument('--cooldown', type=int)
     parser.add_argument('--interval', type=int, help=argparse.SUPPRESS)
     parser.add_argument('--command')
+    parser.add_argument('--noinhibit', dest='inhibit', action='store_false',
+        help=argparse.SUPPRESS)
     parser.parse_args(namespace=config)
 
 
@@ -380,7 +474,9 @@ def load_config_file(config):
         parser.read_file(lines)
 
     for name, value in parser['top'].items():
-        if isinstance(getattr(config, name), int):
+        if isinstance(getattr(config, name), bool):
+            value = value.lower() in {'true', 't', 'yes', 'y', 'on', '1'}
+        elif isinstance(getattr(config, name), int):
             value = int(value)
         setattr(config, name, value)
 
@@ -473,6 +569,8 @@ def main():
     wakers = list(DEFAULT_WAKERS)
     if config.command:
         wakers.append(ExecWaker(shellcmd=config.command, name="custom"))
+    if config.inhibit:
+        wakers.append(IdleInhibitor(cooldown=config.cooldown))
 
     try:
         watcher = JoystickWatcher(wakers=wakers, cooldown=config.cooldown)

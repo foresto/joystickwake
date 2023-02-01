@@ -11,7 +11,7 @@ X-Python3-Version: >= 3.5
 Package: joystickwake
 Architecture: all
 Depends: ${python3:Depends}, ${misc:Depends}, python3-pyudev
-Recommends: python3-xlib
+Recommends: python3-dbus-next, python3-xlib
 Description: joystick-aware screen waker
  Suppresses screen blankers while game controllers are in use.
  Supports several popular screen savers by default, and can be configured
