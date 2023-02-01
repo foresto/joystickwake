@@ -97,7 +97,7 @@ class ExecWaker(Waker):
     async def wake(self):
         """Wake the screen by running a program.
         """
-        self._log.debug("%s waker running command: %s", self,
+        self._log.debug("%s waker executing: %s", self,
             ' '.join(self._args) if self._args else self._shellcmd)
 
         try:
@@ -132,7 +132,7 @@ class ExecWaker(Waker):
         elif errmatch:
             reason = "stderr contained {!r}".format(errmatch[0])
         else:
-            self._log.debug("%s waker succeeded", self)
+            self._log.debug("%s waker reported success", self)
             self._softfailcount = 0
             return
 
