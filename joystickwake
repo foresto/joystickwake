@@ -42,12 +42,10 @@ class Waker:
     Subclasses are expected to implement the wake() method, and set self.failed
     if wake() fails, so calling code will know to skip it next time.
 
-    They might launch a subprocess or send a dbus message, although
-    the latter can also be accomplished with the dbus-send command
-    For example:
-
-        dbus-send --type=method_call --dest=org.gnome.ScreenSaver \
-        /org/gnome/ScreenSaver org.gnome.ScreenSaver.SetActive boolean:false
+    The wake() method will be called periodically, like a heartbeat, when user
+    activity is detected.  It should relay this heartbeat to the screen blanker
+    using whatever means it can, such as running a command line tool or sending
+    a dbus message.
     """
     #pylint:disable=too-few-public-methods
 
