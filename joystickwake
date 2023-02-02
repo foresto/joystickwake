@@ -40,6 +40,7 @@ except ImportError:
 
 
 PROGRAM_NAME = os.path.basename(sys.argv[0])
+WAKE_REASON = "Active joystick"
 
 
 # ======================================================================
@@ -278,7 +279,7 @@ class IdleInhibitor(Waker):
                     if cookie is None:
                         self._log.debug("%s requesting inhibition", self)
                         cookie = await quickly(
-                            iface.call_inhibit(PROGRAM_NAME, "Active joystick"))
+                            iface.call_inhibit(PROGRAM_NAME, WAKE_REASON))
                     self._log.debug("%s inhibiting for %ds", self, holdtime)
 
         except NameError:
@@ -495,6 +496,8 @@ DEFAULT_WAKERS = [
     ExecWaker('xfce4-screensaver-command', '--poke', name="Xfce"),
     DBusWaker('org.freedesktop.ScreenSaver.SimulateUserActivity',
         desktop='KDE', name="KDE"),
+    DBusWaker('org.freedesktop.ScreenSaver.Inhibit', PROGRAM_NAME, WAKE_REASON,
+        desktop='GNOME', name="heartbeat Inhibit"),
     ]
 
 
