@@ -475,17 +475,6 @@ class JoystickWatcher:
 # ======================================================================
 
 
-class Configuration:
-    """Configurable program settings.
-    """
-    #pylint:disable=too-few-public-methods
-    loglevel = 'warning'
-    cooldown = 30  # minimum number of seconds between screen wakes
-    interval = 0   # deprecated since v0.4 (renamed to cooldown)
-    command = None # custom screen waker shell command, as a string
-    inhibit = True # hidden option for disabling the Idle Inhibitor
-
-
 DEFAULT_WAKERS = [
     ExecWaker('xset', 'dpms', 'force', 'on', regex=".+", name="X11 DPMS"),
     ExecWaker('xset', 's', 'reset', regex=".+", name="X11"),
@@ -499,6 +488,17 @@ DEFAULT_WAKERS = [
     DBusWaker('org.freedesktop.ScreenSaver.Inhibit', PROGRAM_NAME, WAKE_REASON,
         desktop='GNOME', name="heartbeat Inhibit"),
     ]
+
+
+class Configuration:
+    """Configurable program settings.
+    """
+    #pylint:disable=too-few-public-methods
+    loglevel = 'warning'
+    cooldown = 30  # minimum number of seconds between screen wakes
+    interval = 0   # deprecated since v0.4 (renamed to cooldown)
+    command = None # custom screen waker shell command, as a string
+    inhibit = True # hidden option for disabling the Idle Inhibitor
 
 
 def parse_command_line(config):
