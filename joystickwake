@@ -106,7 +106,7 @@ class ExecWaker(Waker):
     async def wake(self):
         """Wake the screen by running a program.
         """
-        self._log.debug("%s waker executing: %s", self,
+        self._log.debug("%s executing: %s", self,
             ' '.join(self._args) if self._args else self._shellcmd)
 
         try:
@@ -125,7 +125,7 @@ class ExecWaker(Waker):
                     stderr=asyncio.subprocess.PIPE)
         except OSError as error:
             self.failed = True
-            self._log.info("%s waker is unavailable: %s", self, error)
+            self._log.info("%s is unavailable: %s", self, error)
             return
 
         outbytes, errbytes = await process.communicate()
@@ -141,24 +141,24 @@ class ExecWaker(Waker):
         elif errmatch:
             reason = "stderr contained {!r}".format(errmatch[0])
         else:
-            self._log.debug("%s waker reported success", self)
+            self._log.debug("%s reported success", self)
             self._softfailcount = 0
             return
 
         self._softfailcount += 1
         if self._softfailcount < 3:
-            self._log.info("%s waker failed (try %s): %s",
+            self._log.info("%s failed (try %s): %s",
                 self, self._softfailcount, reason)
             return
 
         self.failed = True
-        self._log.info("%s waker failed (try %s; giving up): %s",
+        self._log.info("%s failed (try %s; giving up): %s",
             self, self._softfailcount, reason)
 
     def __str__(self):
         """Return a string that identifies this waker.
         """
-        return self._name
+        return self._name + " waker"
 
 
 class IdleInhibitor(Waker):
