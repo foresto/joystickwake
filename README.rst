@@ -88,7 +88,7 @@ and DPMS power-off.  Those commands are::
     gnome-screensaver-command --deactivate
     mate-screensaver-command --poke
     xfce4-screensaver-command --poke
-    qdbus org.freedesktop.ScreenSaver /ScreenSaver SimulateUserActivity
+    dbus-send [...] org.freedesktop.ScreenSaver.SimulateUserActivity
 
 If needed, an additional wake command can be configured in either of the
 following files::

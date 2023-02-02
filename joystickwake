@@ -132,6 +132,7 @@ class ExecWaker(Waker):
 
         if self._log.getEffectiveLevel() <= logging.DEBUG:
             sys.stdout.buffer.write(outbytes)
+            sys.stdout.buffer.flush()  # stdout is block-buffered
             sys.stderr.buffer.write(errbytes)
         errtext = errbytes.decode('utf-8')
         errmatch = errtext and self._errexpr and self._errexpr.search(errtext)
@@ -159,6 +160,60 @@ class ExecWaker(Waker):
         """Return a string that identifies this waker.
         """
         return self._name + " waker"
+
+
+class DBusWaker(ExecWaker):
+    """A wrapper class to simplify building dbus-send command lines.
+    """
+    #pylint:disable=too-few-public-methods
+
+    def __init__(self, target, *args, desktop=None, name=None):
+        """Initialize the screen waker.
+
+        :param target:      A dot-separated dbus interface & method name.
+                            (The service name and object path will be derived
+                            from the interface name.)
+        :param args:        A sequence of dbus method agruments.
+        :param desktop:     Name of a desktop environment to require, or None.
+                            This waker will automatically fail unless this is
+                            in the XDG_CURRENT_DESKTOP environment variable.
+                            Useful for managing behavior differences between
+                            different desktops' dbus service implementations.
+        :param name:        A name for this waker.
+        """
+        # service name, object path, interface, method, args
+        interface, _, _ = target.rpartition('.')
+        path = '/' + interface.replace('.', '/')
+        service = interface
+        args = ['string:' + a for a in args]
+
+        command = [
+            'dbus-send',
+            '--type=method_call',
+            '--print-reply',  # this option is required for useful exit status
+            '--dest=' + service,
+            path,
+            target] + args
+
+        super().__init__(*command, name=name)
+
+        # Determine whether we are in the required desktop environment, but
+        # don't log it yet, since logging has not yet been configured
+        desktops = set(os.environ.get('XDG_CURRENT_DESKTOP', '').split(':'))
+        if desktop and desktop not in desktops:
+            self._nodesktop = desktop
+        else:
+            self._nodesktop = None
+
+    async def wake(self):
+        # automatically fail if outside the required desktop environment
+        if self._nodesktop:
+            self.failed = True
+            self._log.info("%s is unavailable: requires %s desktop",
+                self, self._nodesktop)
+            return
+
+        await super().wake()
 
 
 class IdleInhibitor(Waker):
@@ -190,8 +245,8 @@ class IdleInhibitor(Waker):
         """Respond to pings by holding an Idle Inhibition Service session.
         """
         # Our inhibition hold time should be longer than the wake cooldown,
-        # but not too long, since KDE and GNOME won't restart their idle
-        # timers until after we stop inhibiting.
+        # but not so long as to unreasonably delay the screen blanker.
+        # (KDE and GNOME restart their idle timers after we stop inhibiting.)
         holdtime = self.cooldown * 2
         busname = 'org.freedesktop.ScreenSaver'
         buspath = '/org/freedesktop/ScreenSaver'
@@ -438,8 +493,8 @@ DEFAULT_WAKERS = [
         name="GNOME Screensaver"),
     ExecWaker('mate-screensaver-command', '--poke', name="MATE"),
     ExecWaker('xfce4-screensaver-command', '--poke', name="Xfce"),
-    ExecWaker('qdbus', 'org.freedesktop.ScreenSaver', '/ScreenSaver',
-        'SimulateUserActivity', name='KDE'),
+    DBusWaker('org.freedesktop.ScreenSaver.SimulateUserActivity',
+        desktop='KDE', name="KDE"),
     ]
 
 
