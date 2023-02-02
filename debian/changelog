@@ -1,3 +1,19 @@
+joystickwake (0.4) bullseye-forestix; urgency=medium
+
+  * Rename the 'interval' option to 'cooldown'.
+  * Support the D-Bus org.freedesktop.ScreenSaver Idle Inhibition Service
+    on systems that have the python3 dbus-next package installed.
+  * Add a pair of heartbeat-style wakers (using dbus-send) for modern GNOME.
+    One forces the screen awake, and the other resets the blanker.  Together,
+    they work about as well as the new Idle Inhibitor, without requiring
+    dbus-next.  (Tested on GNOME 3.38, 42.2, 43.0, both X11 and Wayland.)
+  * Use dbus-send instead of qdbus in the KDE waker.
+  * Rename the xset and gnome-screensaver wakers.
+  * Rephrase various log messages.
+  * Expand the man page.
+
+ -- Forest <forestix@sonic.net>  Fri, 03 Feb 2023 22:40:40 -0800
+
 joystickwake (0.3) focal; urgency=medium
 
   * Use stderr regex to detect xset errors, since it always uses exit status 0.
