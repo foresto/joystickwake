@@ -12,7 +12,7 @@ A joystick-aware screen waker
 Synopsis
 --------
 
-    joystickwake -h|--help
+    joystickwake -h|--help|--version
 
     joystickwake [--command cmd] [--cooldown seconds] [--loglevel level]
 

@@ -506,6 +506,7 @@ def parse_command_line(config):
     """
     parser = argparse.ArgumentParser(
         description="Wakes the screen when joysticks are active.")
+    parser.add_argument('--version', action='version', version=__version__)
     parser.add_argument('--loglevel',
         choices='debug info warning error critical'.split())
     parser.add_argument('--cooldown', type=int)
