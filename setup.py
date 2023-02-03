@@ -37,6 +37,7 @@ setup(
     author='Forest',
     author_email='forestix@sonic.net',
     url='https://github.com/foresto/joystickwake',
+    python_requires='>=3.5',
     requires=['pyudev'],
     install_requires=['pyudev'],  # for pip
     scripts=['joystickwake'],
