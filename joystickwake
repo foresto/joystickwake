@@ -182,11 +182,18 @@ class DBusWaker(ExecWaker):
                             different desktops' dbus service implementations.
         :param name:        A name for this waker.
         """
+        def encode(arg):
+            if arg is True:
+                return 'boolean:true'
+            if arg is False:
+                return 'boolean:false'
+            return 'string:' + arg
+
         # service name, object path, interface, method, args
         interface, _, _ = target.rpartition('.')
         path = '/' + interface.replace('.', '/')
         service = interface
-        args = ['string:' + a for a in args]
+        args = [encode(a) for a in args]
 
         command = [
             'dbus-send',
@@ -487,6 +494,8 @@ DEFAULT_WAKERS = [
         desktop='KDE', name="KDE"),
     DBusWaker('org.freedesktop.ScreenSaver.Inhibit', PROGRAM_NAME, WAKE_REASON,
         desktop='GNOME', name="heartbeat Inhibit"),
+    DBusWaker('org.gnome.ScreenSaver.SetActive', False,
+        desktop='GNOME', name="GNOME SetActive"),
     ]
 
 

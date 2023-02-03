@@ -137,12 +137,13 @@ zones used by the linux evdev and joystick APIs, as described here:
 
 https://wiki.archlinux.org/title/Gamepad#Setting_up_deadzones_and_calibration
 
-If the screen wakes with joystick input, but never blanks again even when all
-joysticks are disconnected, it could be due to a mismatch between your screen
-blanker and one of the wake commands installed on your system.  For example, a
-modern GNOME Shell might misinterpret D-Bus messages sent by an old
-gnome-screensaver-command.  Removing that command from your system and
-restarting your desktop session should help.
+If the screen wakes with joystick input, but never blanks again even after all
+joysticks are disconnected, it could be due to a mismatch between the GNOME
+screen blanker and one of the wake commands detected on your system.  For
+example, a modern GNOME Shell might misinterpret D-Bus messages intended for
+the legacy GNOME Screensaver.  Possible solutions include installing the
+python3 dbus-next package (which joystickwake can use to avoid the problem), or
+switching from GNOME's Wayland session to X11.
 
 If the log shows at least one waker succeeding but the screen still blanks
 while a joystick is in use, your screen blanker's timeout might be too short
