@@ -90,6 +90,7 @@ and DPMS power-off.  Those commands are::
     xfce4-screensaver-command --poke
     dbus-send [...] org.freedesktop.ScreenSaver.SimulateUserActivity
     dbus-send [...] org.freedesktop.ScreenSaver.Inhibit
+    dbus-send [...] org.gnome.ScreenSaver.SetActive false
 
 If needed, an additional wake command can be configured in either of the
 following files::
@@ -131,7 +132,7 @@ joystickwake avoids failing commands after a few tries.
 If joystickwake keeps the screen awake even when all joysticks are idle, it is
 likely due to "stick drift", meaning that a joystick either is not centering
 itself properly or is suffering from a faulty sensor.  This is unfortunately
-common in modern game controllers.  Other than replacing the hardware, or
+common in modern game controllers.  Other than replacing the hardware or
 disconnecting it when not in use, this can be resolved by calibrating the dead
 zones used by the linux evdev and joystick APIs, as described here:
 
@@ -221,7 +222,7 @@ See Also
 - xdg-screensaver (from xdg-utils, aka Portland) attempts to be a unified
   screensaver control interface:
   https://www.freedesktop.org/wiki/Software/xdg-utils/
-- Caffeine runs `xdg-screensaver suspend` when it finds a fullscreen window:
+- Caffeine runs ``xdg-screensaver suspend`` when it finds a fullscreen window:
   https://code.launchpad.net/caffeine
 - Faux GNOME Screensaver is a GNOME compatibility layer for XScreenSaver:
   https://github.com/jefferyto/faux-gnome-screensaver
