@@ -1,7 +1,7 @@
 Source: joystickwake
 Section: x11
 Priority: optional
-Maintainer: Forest <forestix@sonic.net>
+Maintainer: Forest <forestix@nom.one>
 Homepage: https://github.com/foresto/joystickwake
 Standards-Version: 4.6.2
 Build-Depends: debhelper (>= 10), dh-python, python3,
