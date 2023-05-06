@@ -384,12 +384,27 @@ class JoystickWatcher:
     def _get_device_description(device):
         """Return a human-readable description of a udev device.
         """
-        vendor = device.get('ID_VENDOR', "").replace('_', ' ')
-        model = device.get('ID_MODEL', "").replace('_', ' ')
-        bus = device.get('ID_BUS')
-        if bus:
-            bus = '(' + bus + ')'
-        return ' '.join((vendor, model, bus)).strip()
+        props = device.properties
+        try:
+            desc = '{} {}'.format(props['ID_VENDOR'], props['ID_MODEL'])
+        except KeyError:
+            desc = device.get('NAME') or device.parent.get('NAME') or '""'
+
+        # Extra info, in case of multiple devices or missing vendor/description
+        extra = []
+        try:
+            extra.append(props['ID_BUS'])
+        except KeyError:
+            pass
+        try:
+            if device.device_path.split('/')[2] == 'virtual':
+                extra.append('virtual')
+        except KeyError:
+            pass
+
+        if extra:
+            desc += ' ({})'.format(' '.join(extra))
+        return desc
 
     def _watch_device(self, device):
         """Start watching a udev device for activity, if it is a joystick.
