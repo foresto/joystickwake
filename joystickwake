@@ -2,6 +2,9 @@
 """
 A joystick-aware screen waker.
 
+Copyright 2014, 2016-2025 Forest <forestix@nom.one>
+This software is distributed under the terms of the Expat License.
+See the LICENSE file in the original source distribution for details.
 """
 
 __version__ = '0.4.2'

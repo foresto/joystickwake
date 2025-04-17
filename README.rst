@@ -6,7 +6,7 @@ A joystick-aware screen waker
 -----------------------------
 
 :Manual section: 1
-:Date:           2023-02-01
+:Date:           2025-04-17
 
 
 Synopsis
@@ -220,6 +220,9 @@ See Also
   https://github.com/foresto/joystickwake
 - Ubuntu package:
   https://launchpad.net/~foresto/+archive/ubuntu/toys
+- GameMode can inhibit the screensaver on desktops that implement the
+  org.freedesktop.ScreenSaver D-Bus interface:
+  https://github.com/FeralInteractive/gamemode
 - xdg-screensaver (from xdg-utils, aka Portland) attempts to be a unified
   screensaver control interface:
   https://www.freedesktop.org/wiki/Software/xdg-utils/
