@@ -217,7 +217,7 @@ See Also
 --------
 
 - Project page:
-  https://github.com/foresto/joystickwake
+  https://codeberg.org/forestix/joystickwake
 - Ubuntu package:
   https://launchpad.net/~foresto/+archive/ubuntu/toys
 - GameMode can inhibit the screensaver on desktops that implement the
