@@ -7,7 +7,7 @@ This software is distributed under the terms of the Expat License.
 See the LICENSE file in the original source distribution for details.
 """
 
-__version__ = '0.4.2'
+__version__ = '0.5'
 __version_info__ = tuple(int(n) for n in __version__.split('.'))
 
 
@@ -30,8 +30,8 @@ import sys
 import time
 
 try:
-    import dbus_next
-    import dbus_next.aio
+    import dbus_fast
+    import dbus_fast.aio
 except ImportError:
     pass
 import pyudev
@@ -268,7 +268,7 @@ class IdleInhibitor(Waker):
 
         try:
             self._log.debug("%s connecting to the session bus", self)
-            bus = await quickly(dbus_next.aio.MessageBus().connect())
+            bus = await quickly(dbus_fast.aio.MessageBus().connect())
             introspection = await quickly(bus.introspect(busname, buspath))
             proxy = bus.get_proxy_object(busname, buspath, introspection)
             iface = proxy.get_interface(ifacename)
@@ -295,10 +295,10 @@ class IdleInhibitor(Waker):
                     self._log.debug("%s inhibiting for %ds", self, holdtime)
 
         except NameError:
-            self._log.info("%s is unavailable: needs python3-dbus-next", self)
+            self._log.info("%s is unavailable: needs python3-dbus-fast", self)
         except (
-            dbus_next.DBusError,
-            dbus_next.InterfaceNotFoundError,
+            dbus_fast.DBusError,
+            dbus_fast.InterfaceNotFoundError,
             ) as err:
             self._log.info("%s is unavailable: %s", self, err)
         except asyncio.TimeoutError:

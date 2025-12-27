@@ -6,7 +6,7 @@ A joystick-aware screen waker
 -----------------------------
 
 :Manual section: 1
-:Date:           2025-04-17
+:Date:           2025-12-26
 
 
 Synopsis
@@ -56,7 +56,7 @@ wakes.  Joystickwake thereby learns which commands are available on the host
 system, avoids excessive work that might cause game lag, and minimizes log
 clutter.  In practice, it is very lightweight.
 
-If the python3 dbus-next package is installed, joystickwake will also try to
+If the python3 dbus-fast package is installed, joystickwake will also try to
 inhibit the desktop environment's screen idle state for a short while after
 detecting activity, using the org.freedesktop.ScreenSaver interface.  This
 helps with certain environments whose heartbeat-style wake interfaces are
@@ -144,7 +144,7 @@ joysticks are disconnected, it could be due to a mismatch between the GNOME
 screen blanker and one of the wake commands detected on your system.  For
 example, a modern GNOME Shell might misinterpret D-Bus messages intended for
 the legacy GNOME Screensaver.  Possible solutions include installing the
-python3 dbus-next package (which joystickwake can use to avoid the problem), or
+python3 dbus-fast package (which joystickwake can use to avoid the problem), or
 switching from GNOME's Wayland session to X11.
 
 If the log shows at least one waker succeeding but the screen still blanks
